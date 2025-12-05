@@ -29,7 +29,7 @@
         ::-webkit-scrollbar-thumb:hover { background: #555; }
         .animate-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: bold; color: #4f46e5; }
     </style>
 </head>
 <body>
@@ -40,40 +40,13 @@
         const RechartsObj = window.Recharts || {};
         const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } = RechartsObj;
 
-        // --- SABİT VERİLER (BAŞLANGIÇ/YEDEK İÇİN) ---
-        const INITIAL_TEXTS = [
-          {
-            id: 1,
-            title: "Karga ile Su Testisi",
-            content: "Çok susamış bir karga, azıcık su bulunan bir testi buldu. Fakat testinin ağzı dar olduğundan gagasını uzatıp suyu içemedi. Karga düşündü, taşındı ve aklına bir fikir geldi. Yerden küçük çakıl taşlarını toplayıp testinin içine atmaya başladı. Taşlar doldukça su yükseldi. Sonunda su, karganın içebileceği seviyeye geldi ve karga kana kana su içti.",
-            level: 1,
-            questions: [
-              { q: "Karga suyu neden içemedi?", options: ["Su çok sıcaktı", "Testinin ağzı dardı", "Suyu sevmedi", "Gagası kırıldı"], answer: 1 },
-              { q: "Karganın aklına nasıl bir fikir geldi?", options: ["Testiyi kırmak", "Başkasına yardım istemek", "İçine taş atmak", "Yağmur yağmasını beklemek"], answer: 2 },
-              { q: "Taşlar atılınca suya ne oldu?", options: ["Su kirlendi", "Su döküldü", "Su buharlaştı", "Su yükseldi"], answer: 3 },
-              { q: "Hikayenin ana fikri nedir?", options: ["Kaba kuvvet her şeyi çözer", "Zeka ve sabırla zorluklar aşılır", "Kargalar suyu sever", "Testiler dar ağızlı olmamalıdır"], answer: 1 },
-              { q: "Karga başlangıçta ne durumdaydı?", options: ["Çok açtı", "Çok uykusuzdu", "Çok susamıştı", "Çok yorgundu"], answer: 2 }
-            ]
-          }
-        ];
-
-        // --- VERİ SERVİSİ (HİBRİT: GOOGLE SHEETS + LOCAL STORAGE) ---
+        // --- VERİ SERVİSİ (GOOGLE SHEETS) ---
         const DataService = {
-            get scriptUrl() {
-                // Link buraya gömüldü. LocalStorage boşsa bu link kullanılır.
-                return localStorage.getItem('google_script_url') || 'https://script.google.com/macros/s/AKfycbyiiR4V-HoqDuLxXIkAC_4ayU-ecgEg8ysdLyYk8Za8Qw3UW23eYylyM2qZbj3nqqu5bg/exec';
-            },
+            // VERDİĞİNİZ LİNK BURAYA GÖMÜLDÜ
+            scriptUrl: 'https://script.google.com/macros/s/AKfycbyiiR4V-HoqDuLxXIkAC_4ayU-ecgEg8ysdLyYk8Za8Qw3UW23eYylyM2qZbj3nqqu5bg/exec',
 
             async request(action, data = {}) {
-                // Eğer URL varsa Buluta git, yoksa Yerel çalış
-                if (this.scriptUrl) {
-                    return this.cloudRequest(action, data);
-                } else {
-                    return this.mockRequest(action, data);
-                }
-            },
-
-            async cloudRequest(action, data) {
+                // İstek gönderiliyor...
                 try {
                     const formData = new URLSearchParams();
                     formData.append('action', action);
@@ -83,71 +56,13 @@
                         method: 'POST',
                         body: formData
                     });
+                    
                     const json = await response.json();
                     return json;
                 } catch (error) {
-                    console.error("Bulut Bağlantı Hatası:", error);
-                    return { success: false, message: "Bağlantı hatası: " + error.message };
+                    console.error("Bağlantı Hatası:", error);
+                    return { success: false, message: "İnternet bağlantısı veya sunucu hatası: " + error.message };
                 }
-            },
-
-            mockRequest(action, data) {
-                return new Promise(resolve => {
-                    setTimeout(() => {
-                        const users = JSON.parse(localStorage.getItem('mock_users')) || [];
-                        const stats = JSON.parse(localStorage.getItem('mock_stats')) || {};
-                        const storedTexts = JSON.parse(localStorage.getItem('mock_texts'));
-                        const texts = storedTexts || INITIAL_TEXTS;
-                        
-                        if (action === 'getUsers') {
-                            resolve({ success: true, users });
-                        }
-                        else if (action === 'getTexts') {
-                            resolve({ success: true, texts });
-                        }
-                        else if (action === 'addUser') {
-                            const newUser = { 
-                                id: Date.now().toString(), 
-                                name: data.name, 
-                                password: data.password,
-                                role: 'student' 
-                            };
-                            localStorage.setItem('mock_users', JSON.stringify([...users, newUser]));
-                            resolve({ success: true, user: newUser });
-                        }
-                        else if (action === 'deleteUser') {
-                            // ID String karşılaştırması
-                            const filtered = users.filter(u => String(u.id) !== String(data.id));
-                            localStorage.setItem('mock_users', JSON.stringify(filtered));
-                            if (stats[data.id]) {
-                                delete stats[data.id];
-                                localStorage.setItem('mock_stats', JSON.stringify(stats));
-                            }
-                            resolve({ success: true });
-                        }
-                        else if (action === 'addText') {
-                            const newText = { ...data, id: Date.now() };
-                            const updatedTexts = [...texts, newText];
-                            localStorage.setItem('mock_texts', JSON.stringify(updatedTexts));
-                            resolve({ success: true, text: newText });
-                        }
-                        else if (action === 'deleteText') {
-                            const filteredTexts = texts.filter(t => String(t.id) !== String(data.id));
-                            localStorage.setItem('mock_texts', JSON.stringify(filteredTexts));
-                            resolve({ success: true });
-                        }
-                        else if (action === 'saveStat') { 
-                            const userStats = stats[data.userId] || [];
-                            userStats.push({ ...data, date: new Date().toLocaleString() });
-                            stats[data.userId] = userStats;
-                            localStorage.setItem('mock_stats', JSON.stringify(stats));
-                            resolve({ success: true });
-                        }
-                        else if (action === 'getStats') {
-                            resolve({ success: true, stats: stats[data.userId] || [] });
-                        }
-                    }, 200); 
-                });
             }
         };
 
@@ -213,16 +128,37 @@
                 eyeTrackSpeed: 1000 
             });
 
+            // Başlangıçta Verileri Çek
             useEffect(() => {
                 fetchInitialData();
             }, []);
 
             const fetchInitialData = async () => {
                 setIsLoading(true);
+                // Kullanıcıları Çek
                 const uRes = await DataService.request('getUsers');
-                if (uRes.success) setUsers(uRes.users);
+                if (uRes.success) {
+                    setUsers(uRes.users);
+                } else {
+                    console.error("Kullanıcılar çekilemedi", uRes.message);
+                }
+                
+                // Metinleri Çek
                 const tRes = await DataService.request('getTexts');
-                if (tRes.success) setTexts(tRes.texts);
+                if (tRes.success && tRes.texts.length > 0) {
+                    setTexts(tRes.texts);
+                } else {
+                    // Veritabanı boşsa varsayılan metinleri göster (Fallback)
+                    setTexts([
+                        {
+                            id: 1,
+                            title: "Karga ile Su Testisi (Örnek)",
+                            content: "Çok susamış bir karga, azıcık su bulunan bir testi buldu...",
+                            level: 1,
+                            questions: [{q: "Örnek Soru", options: ["A", "B", "C", "D"], answer: 0}]
+                        }
+                    ]);
+                }
                 setIsLoading(false);
             };
 
@@ -252,27 +188,34 @@
 
             if (authState === 'login') {
                 return (
-                    <LoginScreen 
-                        users={users} 
-                        isLoading={isLoading} 
-                        onAdminLogin={handleAdminLogin} 
-                        onUserSelect={handleUserSelect}
-                        fetchUsers={fetchInitialData}
-                    />
+                    <>
+                        {isLoading && <div className="loading-overlay">Veriler Yükleniyor...</div>}
+                        <LoginScreen 
+                            users={users} 
+                            isLoading={isLoading} 
+                            onAdminLogin={handleAdminLogin} 
+                            onUserSelect={handleUserSelect}
+                            fetchUsers={fetchInitialData}
+                        />
+                    </>
                 );
             }
 
             return (
-                <MainApp 
-                    currentUser={currentUser} 
-                    isAdmin={isAdmin} 
-                    onLogout={handleLogout} 
-                    allUsers={users}
-                    refreshData={fetchInitialData}
-                    gameSettings={gameSettings}
-                    setGameSettings={setGameSettings}
-                    texts={texts} 
-                />
+                <>
+                    {isLoading && <div className="loading-overlay">İşlem Yapılıyor...</div>}
+                    <MainApp 
+                        currentUser={currentUser} 
+                        isAdmin={isAdmin} 
+                        onLogout={handleLogout} 
+                        allUsers={users}
+                        refreshData={fetchInitialData}
+                        gameSettings={gameSettings}
+                        setGameSettings={setGameSettings}
+                        texts={texts} 
+                        setIsLoading={setIsLoading} // Yükleme ekranını tetiklemek için
+                    />
+                </>
             );
         };
 
@@ -380,7 +323,7 @@
             );
         };
 
-        const MainApp = ({ currentUser, isAdmin, onLogout, allUsers, refreshData, gameSettings, setGameSettings, texts }) => {
+        const MainApp = ({ currentUser, isAdmin, onLogout, allUsers, refreshData, gameSettings, setGameSettings, texts, setIsLoading }) => {
             const [activeTab, setActiveTab] = useState('dashboard');
             const [userStats, setUserStats] = useState({ wpmHistory: [], exerciseStats: {} });
             const [viewingUser, setViewingUser] = useState(currentUser);
@@ -464,7 +407,9 @@
                         onSelectUser={(u) => { setViewingUser(u); setActiveTab('dashboard'); }} 
                         showNotify={showNotify}
                         texts={texts}
-                        settings={gameSettings} setSettings={setGameSettings}
+                        settings={gameSettings} 
+                        setGameSettings={setGameSettings}
+                        setIsLoading={setIsLoading}
                     />
                 );
                 return <Dashboard stats={userStats} texts={texts} user={viewingUser} onStart={() => setActiveTab('test')} isAdmin={isAdmin} />;
@@ -588,12 +533,10 @@
             </div>
         );
 
-        const AdminManager = ({ allUsers, refreshData, onSelectUser, showNotify, texts, settings, setSettings }) => {
+        const AdminManager = ({ allUsers, refreshData, onSelectUser, showNotify, texts, settings, setSettings, setIsLoading }) => {
             const [activeTab, setActiveTab] = useState('users'); // users, texts, settings
             const [newName, setNewName] = useState('');
             const [newPassword, setNewPassword] = useState('');
-            // Yönetici panelindeki input alanı için de varsayılan değer güncellendi
-            const [scriptUrl, setScriptUrl] = useState(localStorage.getItem('google_script_url') || 'https://script.google.com/macros/s/AKfycbyiiR4V-HoqDuLxXIkAC_4ayU-ecgEg8ysdLyYk8Za8Qw3UW23eYylyM2qZbj3nqqu5bg/exec');
             
             // Metin Ekleme State'leri
             const [newText, setNewText] = useState({ title: '', content: '', level: 1 });
@@ -601,18 +544,14 @@
                 Array(5).fill(null).map(() => ({ q: '', options: ['', '', '', ''], answer: 0 }))
             );
 
-            const saveSettings = () => {
-                localStorage.setItem('google_script_url', scriptUrl);
-                showNotify('Bağlantı ayarları kaydedildi. Sayfa yenileniyor...');
-                setTimeout(() => window.location.reload(), 1000);
-            };
-
             const handleAddUser = async () => {
                 if (!newName.trim() || !newPassword.trim()) {
                     showNotify('Lütfen ad ve şifre giriniz.', 'error');
                     return;
                 }
+                setIsLoading(true);
                 const res = await DataService.request('addUser', { name: newName, password: newPassword });
+                setIsLoading(false);
                 if (res.success) {
                     showNotify('Kullanıcı başarıyla eklendi');
                     setNewName('');
@@ -625,7 +564,9 @@
 
             const handleDeleteUser = async (id) => {
                 if(!confirm('Bu kullanıcıyı ve tüm verilerini silmek istediğinize emin misiniz?')) return;
+                setIsLoading(true);
                 const res = await DataService.request('deleteUser', { id });
+                setIsLoading(false);
                 if (res.success) {
                     showNotify('Kullanıcı silindi');
                     refreshData();
@@ -634,7 +575,9 @@
 
             const handleDeleteText = async (id) => {
                 if(!confirm('Bu metni silmek istediğinize emin misiniz?')) return;
+                setIsLoading(true);
                 const res = await DataService.request('deleteText', { id });
+                setIsLoading(false);
                 if (res.success) {
                     showNotify('Metin silindi');
                     refreshData();
@@ -658,7 +601,9 @@
                     questions: newQuestions
                 };
 
+                setIsLoading(true);
                 const res = await DataService.request('addText', payload);
+                setIsLoading(false);
                 if (res.success) {
                     showNotify('Metin başarıyla eklendi!');
                     setNewText({ title: '', content: '', level: 1 });
@@ -683,7 +628,6 @@
                         <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'users' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Öğrenci Yönetimi</button>
                         <button onClick={() => setActiveTab('texts')} className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'texts' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Metin Yönetimi</button>
                         <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Oyun Ayarları</button>
-                        <button onClick={() => setActiveTab('cloud')} className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'cloud' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Bulut Bağlantısı</button>
                     </div>
 
                     {/* ÖĞRENCİ YÖNETİMİ */}
@@ -818,34 +762,6 @@
                                         <span className="text-sm text-gray-500">Milisaniye (Kelime geçiş hızı)</span>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* BULUT BAĞLANTISI */}
-                    {activeTab === 'cloud' && (
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 max-w-2xl">
-                            <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-indigo-700"><Cloud size={20}/> Google Sheets Bağlantısı</h2>
-                            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
-                                <p className="text-sm text-blue-800">
-                                    <strong>Nasıl Çalışır?</strong> Google Apps Script kullanarak oluşturduğunuz Web Uygulaması URL'sini buraya yapıştırın. 
-                                    Sistem otomatik olarak verileri buluta kaydetmeye başlayacaktır. URL boş bırakılırsa veriler sadece bu tarayıcıda saklanır.
-                                </p>
-                            </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Web App URL</label>
-                                    <input 
-                                        type="text" 
-                                        value={scriptUrl} 
-                                        onChange={e => setScriptUrl(e.target.value)} 
-                                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm" 
-                                        placeholder="https://script.google.com/macros/s/..."
-                                    />
-                                </div>
-                                <button onClick={saveSettings} className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition w-full">
-                                    Bağlantıyı Kaydet ve Yenile
-                                </button>
                             </div>
                         </div>
                     )}
@@ -1058,8 +974,7 @@
           useEffect(() => {
               let tachiInterval;
               if (tachiIsPlaying && gameData && gameData.words) {
-                  // Dakikadaki kelime sayısı (WPM) -> MS cinsinden kelime aralığı
-                  const delay = 60000 / tachiSettings.wpm; 
+                  const delay = Math.floor(60000 / tachiSettings.wpm);
                   tachiInterval = setInterval(() => {
                       setTachiWordIndex(prev => {
                           if (prev >= gameData.words.length - 1) {
@@ -1474,21 +1389,6 @@
               </div>
             </div>
           );
-        };
-
-        const SafeChart = ({ data, color = "#4f46e5" }) => {
-            if (!RechartsObj.LineChart) return <div>Grafik Yükleniyor...</div>;
-            return (
-               <ResponsiveContainer width="100%" height="100%">
-                 <LineChart data={data}>
-                   <CartesianGrid strokeDasharray="3 3" />
-                   <XAxis dataKey="date" fontSize={10} tick={{fill: '#6b7280'}} tickFormatter={(v) => v.split(' ')[0]} />
-                   <YAxis fontSize={10} tick={{fill: '#6b7280'}} />
-                   <Tooltip />
-                   <Line type="monotone" dataKey={data[0]?.wpm ? "wpm" : "score"} stroke={color} strokeWidth={3} dot={{r: 4}} />
-                 </LineChart>
-               </ResponsiveContainer>
-            );
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
