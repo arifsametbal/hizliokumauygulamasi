@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hızlı Okuma Pro - Öğrenci Takip Sistemi</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <!-- Prop Types -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+
+    <!-- Recharts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        .animate-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const RechartsObj = window.Recharts || {};
+        const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } = RechartsObj;
+
+        // --- SABİT VERİLER (BAŞLANGIÇ/YEDEK İÇİN) ---
+        const INITIAL_TEXTS = [
+          {
+            id: 1,
+            title: "Karga ile Su Testisi",
+            content: "Çok susamış bir karga, azıcık su bulunan bir testi buldu. Fakat testinin ağzı dar olduğundan gagasını uzatıp suyu içemedi. Karga düşündü, taşındı ve aklına bir fikir geldi. Yerden küçük çakıl taşlarını toplayıp testinin içine atmaya başladı. Taşlar doldukça su yükseldi. Sonunda su, karganın içebileceği seviyeye geldi ve karga kana kana su içti.",
+            level: 1,
+            questions: [
+              { q: "Karga suyu neden içemedi?", options: ["Su çok sıcaktı", "Testinin ağzı dardı", "Suyu sevmedi", "Gagası kırıldı"], answer: 1 },
+              { q: "Karganın aklına nasıl bir fikir geldi?", options: ["Testiyi kırmak", "Başkasına yardım istemek", "İçine taş atmak", "Yağmur yağmasını beklemek"], answer: 2 },
+              { q: "Taşlar atılınca suya ne oldu?", options: ["Su kirlendi", "Su döküldü", "Su buharlaştı", "Su yükseldi"], answer: 3 },
+              { q: "Hikayenin ana fikri nedir?", options: ["Kaba kuvvet her şeyi çözer", "Zeka ve sabırla zorluklar aşılır", "Kargalar suyu sever", "Testiler dar ağızlı olmamalıdır"], answer: 1 },
+              { q: "Karga başlangıçta ne durumdaydı?", options: ["Çok açtı", "Çok uykusuzdu", "Çok susamıştı", "Çok yorgundu"], answer: 2 }
+            ]
+          }
+        ];
+
+        // --- VERİ SERVİSİ (HİBRİT: GOOGLE SHEETS + LOCAL STORAGE) ---
+        const DataService = {
+            get scriptUrl() {
+                // Link buraya gömüldü. LocalStorage boşsa bu link kullanılır.
+                return localStorage.getItem('google_script_url') || 'https://script.google.com/macros/s/AKfycbyiiR4V-HoqDuLxXIkAC_4ayU-ecgEg8ysdLyYk8Za8Qw3UW23eYylyM2qZbj3nqqu5bg/exec';
+            },
+
+            async request(action, data = {}) {
+                // Eğer URL varsa Buluta git, yoksa Yerel çalış
+                if (this.scriptUrl) {
+                    return this.cloudRequest(action, data);
+                } else {
+                    return this.mockRequest(action, data);
+                }
+            },
+
+            async cloudRequest(action, data) {
+                try {
+                    const formData = new URLSearchParams();
+                    formData.append('action', action);
+                    formData.append('data', JSON.stringify(data));
+
+                    const response = await fetch(this.scriptUrl, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const json = await response.json();
+                    return json;
+                } catch (error) {
+                    console.error("Bulut Bağlantı Hatası:", error);
+                    return { success: false, message: "Bağlantı hatası: " + error.message };
+                }
+            },
+
+            mockRequest(action, data) {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        const users = JSON.parse(localStorage.getItem('mock_users')) || [];
+                        const stats = JSON.parse(localStorage.getItem('mock_stats')) || {};
+                        const storedTexts = JSON.parse(localStorage.getItem('mock_texts'));
+                        const texts = storedTexts || INITIAL_TEXTS;
+                        
+                        if (action === 'getUsers') {
+                            resolve({ success: true, users });
+                        }
+                        else if (action === 'getTexts') {
+                            resolve({ success: true, texts });
+                        }
+                        else if (action === 'addUser') {
+                            const newUser = { 
+                                id: Date.now().toString(), 
+                                name: data.name, 
+                                password: data.password,
+                                role: 'student' 
+                            };
+                            localStorage.setItem('mock_users', JSON.stringify([...users, newUser]));
+                            resolve({ success: true, user: newUser });
+                        }
+                        else if (action === 'deleteUser') {
+                            // ID String karşılaştırması
+                            const filtered = users.filter(u => String(u.id) !== String(data.id));
+                            localStorage.setItem('mock_users', JSON.stringify(filtered));
+                            if (stats[data.id]) {
+                                delete stats[data.id];
+                                localStorage.setItem('mock_stats', JSON.stringify(stats));
+                            }
+                            resolve({ success: true });
+                        }
+                        else if (action === 'addText') {
+                            const newText = { ...data, id: Date.now() };
+                            const updatedTexts = [...texts, newText];
+                            localStorage.setItem('mock_texts', JSON.stringify(updatedTexts));
+                            resolve({ success: true, text: newText });
+                        }
+                        else if (action === 'deleteText') {
+                            const filteredTexts = texts.filter(t => String(t.id) !== String(data.id));
+                            localStorage.setItem('mock_texts', JSON.stringify(filteredTexts));
+                            resolve({ success: true });
+                        }
+                        else if (action === 'saveStat') { 
+                            const userStats = stats[data.userId] || [];
+                            userStats.push({ ...data, date: new Date().toLocaleString() });
+                            stats[data.userId] = userStats;
+                            localStorage.setItem('mock_stats', JSON.stringify(stats));
+                            resolve({ success: true });
+                        }
+                        else if (action === 'getStats') {
+                            resolve({ success: true, stats: stats[data.userId] || [] });
+                        }
+                    }, 200); 
+                });
+            }
+        };
+
+        // --- İKONLAR ---
+        const IconBase = ({ children, ...props }) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg> );
+        const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></IconBase>;
+        const BookOpen = (props) => <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></IconBase>;
+        const Activity = (props) => <IconBase {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></IconBase>;
+        const Settings = (props) => <IconBase {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></IconBase>;
+        const UserIcon = (props) => <IconBase {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></IconBase>;
+        const Lock = (props) => <IconBase {...props}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></IconBase>;
+        const LogOut = (props) => <IconBase {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></IconBase>;
+        const Trash2 = (props) => <IconBase {...props}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></IconBase>;
+        const Plus = (props) => <IconBase {...props}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></IconBase>;
+        const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></IconBase>;
+        const AlertCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></IconBase>;
+        const Play = (props) => <IconBase {...props}><polygon points="5 3 19 12 5 21 5 3"></polygon></IconBase>;
+        const BarChart2 = (props) => <IconBase {...props}><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></IconBase>;
+        const Brain = (props) => <IconBase {...props}><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"></path></IconBase>;
+        const X = (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></IconBase>;
+        const ArrowRight = (props) => <IconBase {...props}><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></IconBase>;
+        const ThumbsUp = (props) => <IconBase {...props}><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></IconBase>;
+        const ThumbsDown = (props) => <IconBase {...props}><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></IconBase>;
+        const Clock = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></IconBase>;
+        const FileText = (props) => <IconBase {...props}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></IconBase>;
+        const Cloud = (props) => <IconBase {...props}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></IconBase>;
+
+        const EXERCISE_TYPES = [
+          { id: 'kelime_avi', title: 'Kelime Avı', category: 'Dikkat', type: 'grid' },
+          { id: 'farkli_kelime', title: 'Farklı Kelime Çifti', category: 'Dikkat', type: 'grid_diff' }, 
+          { id: 'cift_tek', title: 'Çift/Tek Sayı', category: 'Matematik', type: 'math_logic' }, 
+          { id: 'aranan_sayi', title: 'Aranan Sayıyı Bul', category: 'Dikkat', type: 'search_num' }, 
+          { id: 'istenen_harf', title: 'İstenen Harfleri Bul', category: 'Dikkat', type: 'search_letter' },
+          { id: 'goster_kelime', title: 'Kelimeyi Hatırla', category: 'Hafıza', type: 'flash_memory' },
+          { id: 'karisik_kelime', title: 'Karışık Kelime Bul', category: 'Kelime', type: 'scramble_word' },
+          { id: 'goster_cumle', title: 'Cümleyi Hatırla', category: 'Hafıza', type: 'flash_sentence' },
+          { id: 'goz_takibi', title: 'Göz Takibi (Emoji Sayma)', category: 'Göz Kası', type: 'eye_track_count' },
+          { id: 'takistoskop', title: 'Takistoskopik Okuma', category: 'Okuma', type: 'tachistoscope_text' },
+        ];
+
+        const generateRandomNumber = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
+        const randomizeCase = (w) => Math.random() > 0.5 ? w.charAt(0).toLowerCase() + w.slice(1) : w.charAt(0).toUpperCase() + w.slice(1);
+        const createTypo = (w) => w + 'x'; 
+
+        const WORD_POOL = ["Kalem", "Kitap", "Okul", "Bilgisayar", "Hızlı", "Okuma", "Göz", "Beyin", "Algı", "Dikkat", "Başarı", "Eğitim", "Elma", "Armut", "Muz", "Çilek", "Araba", "Otobüs", "Tren", "Uçak"];
+        const SENTENCE_POOL = ["Hızlı okuma bir sanattır.", "Göz kaslarını geliştirmek önemlidir.", "Kitap okumak hayal gücünü geliştirir.", "Başarı düzenli çalışmaktan geçer."];
+        const EMOJI_POOL = ['🍎', '🍌', '🍒', '🍕', '🚀', '🐱', '🐶', '⚽', '🚗', '⭐', '🎈', '🎉'];
+        const ALPHABET = "ABCÇDEFGĞHİIJKLMNOÖPRSŞTUÜVYZ";
+
+        // --- ANA BİLEŞEN ---
+        const App = () => {
+            const [authState, setAuthState] = useState('login'); 
+            const [currentUser, setCurrentUser] = useState(null);
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [users, setUsers] = useState([]);
+            const [texts, setTexts] = useState([]); 
+            const [isLoading, setIsLoading] = useState(false);
+            const [gameSettings, setGameSettings] = useState({
+                generalDuration: 60, 
+                eyeTrackDuration: 300, 
+                tachiSpeed: 300, 
+                eyeTrackSpeed: 1000 
+            });
+
+            useEffect(() => {
+                fetchInitialData();
+            }, []);
+
+            const fetchInitialData = async () => {
+                setIsLoading(true);
+                const uRes = await DataService.request('getUsers');
+                if (uRes.success) setUsers(uRes.users);
+                const tRes = await DataService.request('getTexts');
+                if (tRes.success) setTexts(tRes.texts);
+                setIsLoading(false);
+            };
+
+            const handleAdminLogin = (username, password) => {
+                if (username === 'arifsametbal' && password === '930770') {
+                    setCurrentUser({ id: 'admin', name: 'Arif Samet Bal', role: 'admin' });
+                    setIsAdmin(true);
+                    setAuthState('app');
+                    return true;
+                }
+                return false;
+            };
+
+            const handleUserSelect = (user, password) => {
+                if (user.password && user.password !== password) return false;
+                setCurrentUser(user);
+                setIsAdmin(false);
+                setAuthState('app');
+                return true;
+            };
+
+            const handleLogout = () => {
+                setCurrentUser(null);
+                setIsAdmin(false);
+                setAuthState('login');
+            };
+
+            if (authState === 'login') {
+                return (
+                    <LoginScreen 
+                        users={users} 
+                        isLoading={isLoading} 
+                        onAdminLogin={handleAdminLogin} 
+                        onUserSelect={handleUserSelect}
+                        fetchUsers={fetchInitialData}
+                    />
+                );
+            }
+
+            return (
+                <MainApp 
+                    currentUser={currentUser} 
+                    isAdmin={isAdmin} 
+                    onLogout={handleLogout} 
+                    allUsers={users}
+                    refreshData={fetchInitialData}
+                    gameSettings={gameSettings}
+                    setGameSettings={setGameSettings}
+                    texts={texts} 
+                />
+            );
+        };
+
+        const LoginScreen = ({ users, isLoading, onAdminLogin, onUserSelect, fetchUsers }) => {
+            const [mode, setMode] = useState('user'); 
+            const [adminUser, setAdminUser] = useState('');
+            const [adminPass, setAdminPass] = useState('');
+            const [error, setError] = useState('');
+            const [selectedUser, setSelectedUser] = useState(null);
+            const [userPass, setUserPass] = useState('');
+            const [userError, setUserError] = useState('');
+
+            const doAdminLogin = (e) => {
+                e.preventDefault();
+                const success = onAdminLogin(adminUser, adminPass);
+                if (!success) setError('Hatalı kullanıcı adı veya şifre!');
+            };
+
+            const doUserLogin = (e) => {
+                e.preventDefault();
+                if(!selectedUser) return;
+                const success = onUserSelect(selectedUser, userPass);
+                if(success) { setSelectedUser(null); setUserPass(''); } 
+                else { setUserError('Hatalı şifre!'); }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-blue-800 to-indigo-900 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-4xl flex flex-col md:flex-row h-[600px]">
+                        <div className="bg-indigo-600 w-full md:w-1/2 p-12 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                            <div className="z-10 bg-white/20 p-6 rounded-full mb-6 backdrop-blur-sm">
+                                <Zap size={64} className="text-yellow-300" />
+                            </div>
+                            <h1 className="text-3xl font-bold mb-2 z-10">Hızlı Okuma Pro</h1>
+                            <p className="text-indigo-200 z-10">Öğrenci Takip ve Gelişim Sistemi</p>
+                        </div>
+
+                        <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col relative">
+                            <div className="flex gap-4 mb-8 border-b">
+                                <button onClick={() => { setMode('user'); setSelectedUser(null); }} className={`pb-2 px-4 font-semibold transition ${mode === 'user' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-400'}`}>Öğrenci Girişi</button>
+                                <button onClick={() => setMode('admin')} className={`pb-2 px-4 font-semibold transition ${mode === 'admin' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-400'}`}>Yönetici Girişi</button>
+                            </div>
+
+                            {mode === 'user' ? (
+                                selectedUser ? (
+                                    <form onSubmit={doUserLogin} className="flex-1 flex flex-col justify-center animate-in">
+                                        <button type="button" onClick={() => { setSelectedUser(null); setUserError(''); setUserPass(''); }} className="mb-4 text-sm text-gray-500 hover:text-indigo-600 flex items-center gap-1">← Geri Dön</button>
+                                        <div className="text-center mb-6">
+                                            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 mx-auto mb-2">
+                                                <UserIcon size={32} />
+                                            </div>
+                                            <h3 className="text-xl font-bold">{selectedUser.name}</h3>
+                                            <p className="text-sm text-gray-500">Giriş yapmak için şifrenizi girin</p>
+                                        </div>
+                                        {userError && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 flex items-center gap-2"><AlertCircle size={16}/>{userError}</div>}
+                                        <input type="password" value={userPass} onChange={e => setUserPass(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none mb-4 text-center text-lg" placeholder="Şifre" autoFocus />
+                                        <button type="submit" className="w-full bg-indigo-600 text-white p-3 rounded-lg font-bold hover:bg-indigo-700 transition shadow-lg">Giriş Yap</button>
+                                    </form>
+                                ) : (
+                                    <div className="flex-1 overflow-hidden flex flex-col animate-in">
+                                        <h2 className="text-xl font-bold text-gray-800 mb-4">İsminizi Seçin</h2>
+                                        {isLoading ? (
+                                            <div className="text-center text-gray-500 py-10">Öğrenci listesi yükleniyor...</div>
+                                        ) : (
+                                            <div className="overflow-y-auto flex-1 pr-2 space-y-2">
+                                                {users.length === 0 && <p className="text-gray-400 text-center">Henüz öğrenci eklenmemiş.</p>}
+                                                {users.map(u => (
+                                                    <button key={u.id} onClick={() => setSelectedUser(u)} className="w-full text-left p-4 rounded-xl border border-gray-100 hover:border-indigo-500 hover:bg-indigo-50 transition flex items-center gap-3 group">
+                                                        <div className="bg-gray-100 text-gray-500 group-hover:bg-indigo-500 group-hover:text-white p-2 rounded-full transition">
+                                                            <UserIcon size={20} />
+                                                        </div>
+                                                        <span className="font-medium text-gray-700 group-hover:text-indigo-700">{u.name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="mt-4 text-center">
+                                            <button onClick={fetchUsers} className="text-sm text-indigo-500 hover:underline flex items-center justify-center gap-1 mx-auto"><span className="text-xs">🔄</span> Listeyi Yenile</button>
+                                        </div>
+                                    </div>
+                                )
+                            ) : (
+                                <form onSubmit={doAdminLogin} className="flex-1 flex flex-col justify-center animate-in">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-6">Yönetici Paneli</h2>
+                                    {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 flex items-center gap-2"><AlertCircle size={16}/>{error}</div>}
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-600 mb-1">Kullanıcı Adı</label>
+                                            <input type="text" value={adminUser} onChange={e => setAdminUser(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Kullanıcı Adı" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-600 mb-1">Şifre</label>
+                                            <input type="password" value={adminPass} onChange={e => setAdminPass(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="******" />
+                                        </div>
+                                        <button type="submit" className="w-full bg-indigo-600 text-white p-3 rounded-lg font-bold hover:bg-indigo-700 transition shadow-lg mt-4 flex items-center justify-center gap-2">
+                                            <Lock size={18} /> Güvenli Giriş
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const MainApp = ({ currentUser, isAdmin, onLogout, allUsers, refreshData, gameSettings, setGameSettings, texts }) => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [userStats, setUserStats] = useState({ wpmHistory: [], exerciseStats: {} });
+            const [viewingUser, setViewingUser] = useState(currentUser);
+            const [notification, setNotification] = useState(null);
+            const [currentExercise, setCurrentExercise] = useState(null);
+
+            useEffect(() => {
+                if (!isAdmin) setViewingUser(currentUser);
+            }, [currentUser, isAdmin]);
+
+            useEffect(() => {
+                if (viewingUser) loadUserStats(viewingUser.id);
+            }, [viewingUser]);
+
+            const loadUserStats = async (userId) => {
+                if (userId === 'admin') return; 
+                const res = await DataService.request('getStats', { userId });
+                if (res.success) {
+                    const rawStats = res.stats;
+                    const wpmHistory = rawStats.filter(s => s.type === 'reading').map(s => ({ ...s, wpm: parseInt(s.score) }));
+                    const exerciseStats = {};
+                    rawStats.filter(s => s.type !== 'reading').forEach(s => {
+                        if (!exerciseStats[s.type]) exerciseStats[s.type] = [];
+                        exerciseStats[s.type].push(s);
+                    });
+                    setUserStats({ wpmHistory, exerciseStats });
+                }
+            };
+
+            const saveStat = async (type, score, textId = null, extraData = {}) => {
+                if (isAdmin && viewingUser.id !== currentUser.id) return;
+                
+                const statData = {
+                    userId: currentUser.id,
+                    type: type,
+                    score: score,
+                    textId: textId,
+                    date: new Date().toLocaleString(),
+                    ...extraData
+                };
+
+                if (type === 'reading') {
+                   setUserStats(prev => ({...prev, wpmHistory: [...prev.wpmHistory, { ...statData, wpm: score }]}));
+                } else {
+                   setUserStats(prev => {
+                       const exList = prev.exerciseStats[type] || [];
+                       return { ...prev, exerciseStats: { ...prev.exerciseStats, [type]: [...exList, statData] } };
+                   });
+                }
+
+                await DataService.request('saveStat', statData);
+            };
+
+            const showNotify = (msg, type='success') => {
+                setNotification({msg, type});
+                setTimeout(() => setNotification(null), 3000);
+            };
+
+            const renderContent = () => {
+                if (currentExercise) {
+                    return (
+                        <ExerciseRunner 
+                            exercise={currentExercise} 
+                            allTexts={texts} 
+                            settings={gameSettings} 
+                            onClose={() => setCurrentExercise(null)}
+                            onComplete={(score) => {
+                                saveStat(currentExercise.id, score);
+                            }}
+                        />
+                    );
+                }
+
+                if (activeTab === 'dashboard') return <Dashboard stats={userStats} texts={texts} user={viewingUser} onStart={() => setActiveTab('test')} isAdmin={isAdmin} />;
+                if (activeTab === 'test' && !isAdmin) return <ReadingTest texts={texts} readTextIds={[]} onComplete={(res) => { saveStat('reading', res.wpm, res.textId, { accuracy: res.accuracy }); setActiveTab('dashboard'); }} />;
+                if (activeTab === 'exercises' && !isAdmin) return <ExerciseMenu onSelect={setCurrentExercise} stats={userStats} />;
+                if (activeTab === 'admin_users' && isAdmin) return (
+                    <AdminManager 
+                        allUsers={allUsers} 
+                        refreshData={refreshData} 
+                        onSelectUser={(u) => { setViewingUser(u); setActiveTab('dashboard'); }} 
+                        showNotify={showNotify}
+                        texts={texts}
+                        settings={gameSettings} setSettings={setGameSettings}
+                    />
+                );
+                return <Dashboard stats={userStats} texts={texts} user={viewingUser} onStart={() => setActiveTab('test')} isAdmin={isAdmin} />;
+            };
+
+            return (
+                <div className="flex h-screen bg-gray-50 font-sans text-gray-800 overflow-hidden">
+                    {notification && (
+                        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white flex items-center gap-2 ${notification.type === 'error' ? 'bg-red-500' : 'bg-green-600'}`}>
+                            {notification.msg}
+                        </div>
+                    )}
+                    
+                    <aside className="w-64 bg-indigo-900 text-white flex flex-col shadow-lg">
+                        <div className="p-6 border-b border-indigo-800">
+                            <h1 className="text-xl font-bold flex items-center gap-2"> <Zap className="text-yellow-400" /> Hızlı Okuma </h1>
+                            <div className="mt-4 flex items-center gap-3 bg-indigo-800/50 p-3 rounded-lg">
+                                <div className="bg-indigo-500 p-2 rounded-full"><UserIcon size={16} /></div>
+                                <div className="overflow-hidden">
+                                    <div className="text-sm font-bold truncate">{currentUser.name}</div>
+                                    <div className="text-xs text-indigo-300 uppercase">{isAdmin ? 'Yönetici' : 'Öğrenci'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <nav className="flex-1 p-4 space-y-2">
+                            <button onClick={() => { setActiveTab('dashboard'); setCurrentExercise(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-indigo-700 text-white' : 'text-indigo-200 hover:bg-indigo-800'}`}>
+                                <BarChart2 size={20} /> <span>İstatistikler</span>
+                            </button>
+                            {!isAdmin && (
+                                <>
+                                <button onClick={() => { setActiveTab('test'); setCurrentExercise(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'test' ? 'bg-indigo-700 text-white' : 'text-indigo-200 hover:bg-indigo-800'}`}>
+                                    <BookOpen size={20} /> <span>Okuma Testi</span>
+                                </button>
+                                <button onClick={() => { setActiveTab('exercises'); setCurrentExercise(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'exercises' ? 'bg-indigo-700 text-white' : 'text-indigo-200 hover:bg-indigo-800'}`}>
+                                    <Activity size={20} /> <span>Egzersizler</span>
+                                </button>
+                                </>
+                            )}
+                            {isAdmin && (
+                                <button onClick={() => { setActiveTab('admin_users'); setCurrentExercise(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'admin_users' ? 'bg-indigo-700 text-white' : 'text-indigo-200 hover:bg-indigo-800'}`}>
+                                    <Settings size={20} /> <span>Yönetici Paneli</span>
+                                </button>
+                            )}
+                        </nav>
+                        <div className="p-4 border-t border-indigo-800">
+                            <button onClick={onLogout} className="w-full flex items-center gap-2 justify-center text-red-300 hover:bg-red-900/30 p-2 rounded transition">
+                                <LogOut size={16} /> Çıkış Yap
+                            </button>
+                        </div>
+                    </aside>
+
+                    <main className="flex-1 overflow-auto bg-gray-50 p-6">
+                        {renderContent()}
+                    </main>
+                </div>
+            );
+        };
+
+        const Dashboard = ({ stats, texts, user, onStart, isAdmin }) => {
+            const lastResult = stats.wpmHistory[stats.wpmHistory.length - 1];
+            return (
+                <div className="space-y-8 animate-in">
+                    <header className="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">{user.name} - Gelişim Raporu</h2>
+                            <p className="text-gray-500">Tüm zamanların performans özeti</p>
+                        </div>
+                        {isAdmin && <div className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg font-bold border border-yellow-200">👀 İzleme Modu</div>}
+                    </header>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <StatCard title="Son Okuma Hızı" value={lastResult ? `${lastResult.wpm} kelime/dk` : '-'} icon={<Zap className="text-yellow-500" />} />
+                        <StatCard title="Son Anlama Oranı" value={lastResult && lastResult.accuracy !== undefined ? `%${Number(lastResult.accuracy).toFixed(0)}` : '-'} icon={<Brain className="text-purple-500" />} />
+                        <StatCard title="Tamamlanan Egzersiz" value={Object.values(stats.exerciseStats).flat().length} icon={<Activity className="text-blue-500" />} />
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
+                         <h3 className="text-lg font-semibold mb-4 text-indigo-700">Okuma Hızı Gelişimi</h3>
+                         <div className="h-64">
+                             {stats.wpmHistory.length > 0 ? (
+                                <SafeChart data={stats.wpmHistory} />
+                             ) : (
+                                <div className="h-full flex items-center justify-center text-gray-400">Henüz okuma verisi yok.</div>
+                             )}
+                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {EXERCISE_TYPES.map(ex => {
+                            const data = stats.exerciseStats[ex.id];
+                            if(!data || data.length === 0) return null;
+                            return (
+                                <div key={ex.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                    <h4 className="font-bold text-gray-700 mb-2">{ex.title}</h4>
+                                    <div className="h-32">
+                                        <SafeChart data={data} color="#10b981" />
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                    
+                    {!isAdmin && (
+                        <div className="text-center py-8">
+                            <button onClick={onStart} className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 hover:scale-105 transition transform flex items-center gap-2 mx-auto">
+                                <Play fill="currentColor" /> Yeni Hız Testi Başlat
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        
+        const StatCard = ({ title, value, icon }) => (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="p-3 bg-gray-50 rounded-lg">{icon}</div>
+                <div>
+                    <p className="text-sm text-gray-500">{title}</p>
+                    <p className="text-2xl font-bold text-gray-800">{value}</p>
+                </div>
+            </div>
+        );
+
+        const AdminManager = ({ allUsers, refreshData, onSelectUser, showNotify, texts, settings, setSettings }) => {
+            const [activeTab, setActiveTab] = useState('users'); // users, texts, settings
+            const [newName, setNewName] = useState('');
+            const [newPassword, setNewPassword] = useState('');
+            // Yönetici panelindeki input alanı için de varsayılan değer güncellendi
+            const [scriptUrl, setScriptUrl] = useState(localStorage.getItem('google_script_url') || 'https://script.google.com/macros/s/AKfycbyiiR4V-HoqDuLxXIkAC_4ayU-ecgEg8ysdLyYk8Za8Qw3UW23eYylyM2qZbj3nqqu5bg/exec');
+            
+            // Metin Ekleme State'leri
+            const [newText, setNewText] = useState({ title: '', content: '', level: 1 });
+            const [newQuestions, setNewQuestions] = useState(
+                Array(5).fill(null).map(() => ({ q: '', options: ['', '', '', ''], answer: 0 }))
+            );
+
+            const saveSettings = () => {
+                localStorage.setItem('google_script_url', scriptUrl);
+                showNotify('Bağlantı ayarları kaydedildi. Sayfa yenileniyor...');
+                setTimeout(() => window.location.reload(), 1000);
+            };
+
+            const handleAddUser = async () => {
+                if (!newName.trim() || !newPassword.trim()) {
+                    showNotify('Lütfen ad ve şifre giriniz.', 'error');
+                    return;
+                }
+                const res = await DataService.request('addUser', { name: newName, password: newPassword });
+                if (res.success) {
+                    showNotify('Kullanıcı başarıyla eklendi');
+                    setNewName('');
+                    setNewPassword('');
+                    refreshData();
+                } else {
+                    showNotify('Hata: ' + res.message, 'error');
+                }
+            };
+
+            const handleDeleteUser = async (id) => {
+                if(!confirm('Bu kullanıcıyı ve tüm verilerini silmek istediğinize emin misiniz?')) return;
+                const res = await DataService.request('deleteUser', { id });
+                if (res.success) {
+                    showNotify('Kullanıcı silindi');
+                    refreshData();
+                }
+            };
+
+            const handleDeleteText = async (id) => {
+                if(!confirm('Bu metni silmek istediğinize emin misiniz?')) return;
+                const res = await DataService.request('deleteText', { id });
+                if (res.success) {
+                    showNotify('Metin silindi');
+                    refreshData();
+                }
+            };
+
+            const handleAddText = async () => {
+                if (!newText.title || !newText.content) {
+                    showNotify('Başlık ve içerik zorunludur.', 'error');
+                    return;
+                }
+                // Soru kontrolü
+                const invalidQ = newQuestions.some(q => !q.q || q.options.some(o => !o));
+                if (invalidQ) {
+                    showNotify('Lütfen 5 soruyu ve tüm şıklarını eksiksiz doldurun.', 'error');
+                    return;
+                }
+
+                const payload = {
+                    ...newText,
+                    questions: newQuestions
+                };
+
+                const res = await DataService.request('addText', payload);
+                if (res.success) {
+                    showNotify('Metin başarıyla eklendi!');
+                    setNewText({ title: '', content: '', level: 1 });
+                    setNewQuestions(Array(5).fill(null).map(() => ({ q: '', options: ['', '', '', ''], answer: 0 })));
+                    refreshData();
+                }
+            };
+
+            const updateQuestion = (idx, field, value, optIdx = null) => {
+                const updated = [...newQuestions];
+                if (field === 'options' && optIdx !== null) {
+                    updated[idx].options[optIdx] = value;
+                } else {
+                    updated[idx][field] = value;
+                }
+                setNewQuestions(updated);
+            };
+
+            return (
+                <div className="space-y-6 animate-in">
+                    <div className="flex gap-4 border-b pb-4 overflow-x-auto">
+                        <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'users' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Öğrenci Yönetimi</button>
+                        <button onClick={() => setActiveTab('texts')} className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'texts' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Metin Yönetimi</button>
+                        <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Oyun Ayarları</button>
+                        <button onClick={() => setActiveTab('cloud')} className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'cloud' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Bulut Bağlantısı</button>
+                    </div>
+
+                    {/* ÖĞRENCİ YÖNETİMİ */}
+                    {activeTab === 'users' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit">
+                                <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-indigo-700"><Plus size={20}/> Yeni Öğrenci Ekle</h2>
+                                <div className="flex flex-col gap-4">
+                                    <input type="text" value={newName} onChange={e => setNewName(e.target.value)} className="p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ad Soyad Giriniz" />
+                                    <input type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Şifre Belirle" />
+                                    <button onClick={handleAddUser} className="bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 flex items-center justify-center gap-2 transition">Kaydet</button>
+                                </div>
+                            </div>
+
+                            <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                <h2 className="text-lg font-bold mb-4">Kayıtlı Öğrenciler ({allUsers.length})</h2>
+                                <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="bg-gray-50 text-gray-500 text-sm sticky top-0">
+                                                <th className="p-4 rounded-tl-lg">ID</th>
+                                                <th className="p-4">Ad Soyad</th>
+                                                <th className="p-4">Şifre</th>
+                                                <th className="p-4 rounded-tr-lg text-right">İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {allUsers.map(u => (
+                                                <tr key={u.id} className="hover:bg-indigo-50/50 transition">
+                                                    <td className="p-4 text-gray-400 text-xs font-mono">{u.id}</td>
+                                                    <td className="p-4 font-bold text-gray-800">{u.name}</td>
+                                                    <td className="p-4 text-sm text-gray-500 font-mono">{u.password || '-'}</td>
+                                                    <td className="p-4 text-right flex justify-end gap-2">
+                                                        <button onClick={() => onSelectUser(u)} className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-lg tooltip" title="İstatistikleri Gör"><BarChart2 size={18} /></button>
+                                                        <button onClick={() => handleDeleteUser(u.id)} className="flex items-center gap-1 bg-red-100 text-red-600 hover:bg-red-200 px-3 py-2 rounded-lg text-sm font-bold transition" title="Sil"><Trash2 size={16} /> Sil</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {allUsers.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-gray-400">Kayıt bulunamadı.</td></tr>}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* METİN YÖNETİMİ */}
+                    {activeTab === 'texts' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit max-h-[800px] overflow-y-auto">
+                                <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-indigo-700"><FileText size={20}/> Yeni Metin Ekle</h2>
+                                <div className="space-y-4">
+                                    <input type="text" value={newText.title} onChange={e => setNewText({...newText, title: e.target.value})} className="w-full p-2 border rounded" placeholder="Metin Başlığı" />
+                                    <input type="number" value={newText.level} onChange={e => setNewText({...newText, level: parseInt(e.target.value)})} className="w-full p-2 border rounded" placeholder="Seviye (1-10)" />
+                                    <textarea value={newText.content} onChange={e => setNewText({...newText, content: e.target.value})} className="w-full p-2 border rounded h-32" placeholder="Metin İçeriği..."></textarea>
+                                    
+                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                        <h3 className="font-bold text-gray-700 mb-2">Sorular (5 Adet Zorunlu)</h3>
+                                        {newQuestions.map((q, i) => (
+                                            <div key={i} className="mb-4 border-b pb-4 last:border-0 last:pb-0">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-xs font-bold text-indigo-600">Soru {i+1}</span>
+                                                </div>
+                                                <input type="text" value={q.q} onChange={e => updateQuestion(i, 'q', e.target.value)} className="w-full p-2 border rounded mb-2 text-sm" placeholder="Soru metni" />
+                                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                                    {q.options.map((opt, oIdx) => (
+                                                        <input key={oIdx} type="text" value={opt} onChange={e => updateQuestion(i, 'options', e.target.value, oIdx)} className="w-full p-2 border rounded text-xs" placeholder={`Şık ${oIdx+1}`} />
+                                                    ))}
+                                                </div>
+                                                <select value={q.answer} onChange={e => updateQuestion(i, 'answer', parseInt(e.target.value))} className="w-full p-2 border rounded text-sm bg-white">
+                                                    {q.options.map((_, oIdx) => <option key={oIdx} value={oIdx}>Doğru Cevap: Şık {oIdx+1}</option>)}
+                                                </select>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={handleAddText} className="w-full bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700">Metni Kaydet</button>
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                <h2 className="text-lg font-bold mb-4">Mevcut Metinler ({texts.length})</h2>
+                                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                                    {texts.map(t => (
+                                        <div key={t.id} className="p-4 border rounded-lg hover:bg-gray-50 flex justify-between items-start group">
+                                            <div>
+                                                <div className="font-bold text-gray-800">{t.title}</div>
+                                                <div className="text-xs text-gray-500 mt-1">Seviye: {t.level} • {t.content.length} karakter</div>
+                                            </div>
+                                            <button onClick={() => handleDeleteText(t.id)} className="text-gray-400 hover:text-red-500 p-1"><Trash2 size={18} /></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* OYUN AYARLARI */}
+                    {activeTab === 'settings' && (
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 max-w-2xl">
+                            <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-gray-700"><Settings size={20}/> Tüm Oyun Ayarları</h2>
+                            
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Genel Oyun Süresi (Saniye)</label>
+                                    <div className="flex items-center gap-4">
+                                        <input type="range" min="30" max="300" step="10" value={settings.generalDuration} onChange={(e) => setSettings({...settings, generalDuration: parseInt(e.target.value)})} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+                                        <span className="font-mono font-bold bg-indigo-100 text-indigo-700 px-3 py-1 rounded">{settings.generalDuration}s</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">Kelime Avı, Matematik gibi süreli oyunlar için geçerlidir.</p>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Göz Takibi Oyun Süresi</label>
+                                    <div className="flex items-center gap-4">
+                                        <input type="range" min="60" max="600" step="30" value={settings.eyeTrackDuration} onChange={(e) => setSettings({...settings, eyeTrackDuration: parseInt(e.target.value)})} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600" />
+                                        <span className="font-mono font-bold bg-purple-100 text-purple-700 px-3 py-1 rounded">{settings.eyeTrackDuration}s</span>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Göz Takibi Başlangıç Hızı (ms)</label>
+                                    <div className="flex items-center gap-4">
+                                        <input type="number" min="100" max="2000" step="100" value={settings.eyeTrackSpeed} onChange={(e) => setSettings({...settings, eyeTrackSpeed: parseInt(e.target.value)})} className="border p-2 rounded w-24 text-center" />
+                                        <span className="text-sm text-gray-500">Milisaniye (Düşük = Hızlı)</span>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Takistoskop Geçiş Hızı (ms)</label>
+                                    <div className="flex items-center gap-4">
+                                        <input type="number" min="50" max="1000" step="50" value={settings.tachiSpeed} onChange={(e) => setSettings({...settings, tachiSpeed: parseInt(e.target.value)})} className="border p-2 rounded w-24 text-center" />
+                                        <span className="text-sm text-gray-500">Milisaniye (Kelime geçiş hızı)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* BULUT BAĞLANTISI */}
+                    {activeTab === 'cloud' && (
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 max-w-2xl">
+                            <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-indigo-700"><Cloud size={20}/> Google Sheets Bağlantısı</h2>
+                            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
+                                <p className="text-sm text-blue-800">
+                                    <strong>Nasıl Çalışır?</strong> Google Apps Script kullanarak oluşturduğunuz Web Uygulaması URL'sini buraya yapıştırın. 
+                                    Sistem otomatik olarak verileri buluta kaydetmeye başlayacaktır. URL boş bırakılırsa veriler sadece bu tarayıcıda saklanır.
+                                </p>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Web App URL</label>
+                                    <input 
+                                        type="text" 
+                                        value={scriptUrl} 
+                                        onChange={e => setScriptUrl(e.target.value)} 
+                                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm" 
+                                        placeholder="https://script.google.com/macros/s/..."
+                                    />
+                                </div>
+                                <button onClick={saveSettings} className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition w-full">
+                                    Bağlantıyı Kaydet ve Yenile
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const ReadingTest = ({ texts, onComplete, readTextIds }) => {
+          const [step, setStep] = useState('select');
+          const [selectedText, setSelectedText] = useState(null);
+          const [startTime, setStartTime] = useState(null);
+          const [endTime, setEndTime] = useState(null);
+          const [answers, setAnswers] = useState({});
+          const [currentQIndex, setCurrentQIndex] = useState(0);
+
+          const startReading = () => {
+            setStartTime(Date.now());
+            setStep('read');
+          };
+
+          const finishReading = () => {
+            setEndTime(Date.now());
+            setStep('quiz');
+            setCurrentQIndex(0);
+          };
+
+          const calculateResult = () => {
+            const durationMin = (endTime - startTime) / 1000 / 60;
+            const wordCount = selectedText.content.trim().split(/\s+/).length;
+            const wpm = Math.round(wordCount / durationMin);
+            
+            let correct = 0;
+            selectedText.questions.forEach((q, i) => {
+              if (answers[i] === q.answer) correct++;
+            });
+            const accuracy = (correct / selectedText.questions.length) * 100;
+
+            return { textId: selectedText.id, wpm, accuracy, date: new Date().toLocaleDateString() };
+          };
+
+          if (step === 'select') {
+            return (
+              <div className="bg-white p-8 rounded-xl shadow-sm max-w-4xl mx-auto animate-in">
+                <h2 className="text-2xl font-bold mb-6">Bir Metin Seçin</h2>
+                <div className="grid gap-4 max-h-[600px] overflow-y-auto">
+                  {texts.map(text => {
+                    const isRead = readTextIds.includes(text.id);
+                    return (
+                      <button key={text.id} onClick={() => setSelectedText(text)} 
+                        className={`p-4 border rounded-lg text-left hover:bg-indigo-50 transition flex justify-between items-center ${selectedText?.id === text.id ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200' : 'border-gray-200'} ${isRead ? 'bg-green-50/50' : ''}`}>
+                        <div>
+                          <div className="font-semibold text-lg flex items-center gap-2">
+                            {text.title}
+                            {isRead && <span className="text-green-600 bg-green-100 text-xs px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle size={12}/> Okundu</span>}
+                          </div>
+                          <div className="text-sm text-gray-500">Seviye: {text.level}</div>
+                        </div>
+                        <div className="text-sm font-medium bg-gray-100 px-3 py-1 rounded-full text-gray-600">
+                            {text.content.trim().split(/\s+/).length} kelime
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-6 flex justify-end">
+                  <button disabled={!selectedText} onClick={startReading} className="px-6 py-3 bg-indigo-600 text-white rounded-lg disabled:opacity-50 hover:bg-indigo-700">
+                    Okumaya Başla
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          if (step === 'read') {
+            return (
+              <div className="bg-white p-8 rounded-xl shadow-sm max-w-4xl mx-auto animate-in">
+                <div className="mb-4 flex justify-between items-center border-b pb-4">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-700">{selectedText.title}</span>
+                    <span className="text-xs text-gray-500">Okuma Modu</span>
+                  </div>
+                  <button onClick={finishReading} className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-bold animate-pulse">
+                    BİTİRDİM
+                  </button>
+                </div>
+                <div className="prose max-w-none text-lg leading-relaxed text-gray-800 font-serif">
+                  {selectedText.content}
+                </div>
+              </div>
+            );
+          }
+
+          if (step === 'quiz') {
+            const currentQ = selectedText.questions[currentQIndex];
+            const isLastQuestion = currentQIndex === selectedText.questions.length - 1;
+
+            return (
+              <div className="bg-white p-8 rounded-xl shadow-sm max-w-3xl mx-auto animate-in">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold">Anlama Testi</h2>
+                    <span className="text-sm font-bold bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">
+                        Soru {currentQIndex + 1} / {selectedText.questions.length}
+                    </span>
+                </div>
+                
+                <div className="mb-8">
+                    <p className="font-semibold text-lg mb-4">{currentQ.q}</p>
+                    <div className="space-y-3">
+                      {currentQ.options.map((opt, optIdx) => (
+                        <label key={optIdx} className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${answers[currentQIndex] === optIdx ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-500' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                          <input type="radio" name={`q-${currentQIndex}`} value={optIdx} 
+                            onChange={() => setAnswers({...answers, [currentQIndex]: optIdx})}
+                            checked={answers[currentQIndex] === optIdx}
+                            className="w-5 h-5 text-indigo-600"
+                          />
+                          <span className="text-gray-700">{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                </div>
+
+                <div className="flex justify-end">
+                    {isLastQuestion ? (
+                        <button 
+                          disabled={answers[currentQIndex] === undefined}
+                          onClick={() => {
+                            const result = calculateResult();
+                            onComplete(result);
+                          }} 
+                          className="px-8 py-3 bg-green-600 text-white rounded-lg disabled:opacity-50 hover:bg-green-700 font-bold flex items-center gap-2">
+                          Testi Bitir <CheckCircle size={20}/>
+                        </button>
+                    ) : (
+                        <button 
+                          disabled={answers[currentQIndex] === undefined}
+                          onClick={() => setCurrentQIndex(prev => prev + 1)}
+                          className="px-8 py-3 bg-indigo-600 text-white rounded-lg disabled:opacity-50 hover:bg-indigo-700 font-bold flex items-center gap-2">
+                          Sonraki Soru <ArrowRight size={20}/>
+                        </button>
+                    )}
+                </div>
+              </div>
+            );
+          }
+          
+          return null;
+        };
+
+        const ExerciseMenu = ({ onSelect, stats }) => {
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in">
+              {EXERCISE_TYPES.map(ex => (
+                <div key={ex.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition border border-gray-100 overflow-hidden cursor-pointer group hover:-translate-y-1" onClick={() => onSelect(ex)}>
+                  <div className="p-1 h-2 bg-indigo-500 w-0 group-hover:w-full transition-all duration-500"></div>
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+                        <Activity size={24} />
+                      </div>
+                      <span className="text-xs font-bold px-2 py-1 bg-gray-100 text-gray-600 rounded-full">{ex.category}</span>
+                    </div>
+                    <h3 className="font-bold text-lg mb-2">{ex.title}</h3>
+                    <p className="text-sm text-gray-500">Tıklayın ve egzersizi başlatın.</p>
+                    {stats.exerciseStats[ex.id] && stats.exerciseStats[ex.id].length > 0 && (
+                      <div className="mt-4 h-16">
+                          <SafeChart data={stats.exerciseStats[ex.id]} color="#10b981" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        };
+
+        const ExerciseRunner = ({ exercise, onClose, onComplete, allTexts, settings }) => {
+          const [score, setScore] = useState(0);
+          const [timer, setTimer] = useState(60); 
+          const [isActive, setIsActive] = useState(false);
+          const [gameData, setGameData] = useState(null);
+          const [inputValue, setInputValue] = useState(""); 
+          const [showContent, setShowContent] = useState(false); 
+          const [feedback, setFeedback] = useState(null); 
+          const [correctAnswer, setCorrectAnswer] = useState("");
+          
+          const [tachiPhase, setTachiPhase] = useState('setup');
+          const [tachiWordIndex, setTachiWordIndex] = useState(0);
+          const [tachiIsPlaying, setTachiIsPlaying] = useState(false);
+          const [tachiSettings, setTachiSettings] = useState({ textId: allTexts[0].id, wpm: settings.tachiSpeed || 300 });
+
+          const [eyeTrackPhase, setEyeTrackPhase] = useState('start'); 
+          const [eyeTrackEmoji, setEyeTrackEmoji] = useState(null);
+          const [eyeTrackCount, setEyeTrackCount] = useState(0);
+          const [eyeTrackCurrentEmoji, setEyeTrackCurrentEmoji] = useState(null);
+          const [eyeTrackPos, setEyeTrackPos] = useState({x: 50, y: 50});
+          const [eyeTrackSpeed, setEyeTrackSpeed] = useState(settings.eyeTrackSpeed || 1000); 
+          const [eyeTrackLevel, setEyeTrackLevel] = useState(1); 
+
+          useEffect(() => {
+            let interval;
+            if (isActive && timer > 0 && !feedback && exercise.type !== 'tachistoscope_text') { 
+              interval = setInterval(() => setTimer(t => t - 1), 1000);
+            } else if (timer === 0 && exercise.type !== 'tachistoscope_text') {
+              setIsActive(false);
+              onComplete(score);
+            }
+            return () => clearInterval(interval);
+          }, [isActive, timer, feedback, exercise.type]);
+
+          useEffect(() => {
+              let tachiInterval;
+              if (tachiIsPlaying && gameData && gameData.words) {
+                  // Dakikadaki kelime sayısı (WPM) -> MS cinsinden kelime aralığı
+                  const delay = 60000 / tachiSettings.wpm; 
+                  tachiInterval = setInterval(() => {
+                      setTachiWordIndex(prev => {
+                          if (prev >= gameData.words.length - 1) {
+                              setTachiIsPlaying(false);
+                              setIsActive(false); 
+                              onComplete(score);
+                              return prev;
+                          }
+                          return prev + 1;
+                      });
+                  }, delay); 
+              }
+              return () => clearInterval(tachiInterval);
+          }, [tachiIsPlaying, gameData, tachiSettings.wpm]);
+
+          useEffect(() => {
+              let eyeInterval;
+              if (eyeTrackPhase === 'anim') {
+                  const roundDuration = generateRandomNumber(10000, 30000); 
+                  
+                  eyeInterval = setInterval(() => {
+                      const isTarget = Math.random() < 0.25; 
+                      let current;
+                      
+                      if (isTarget) {
+                          current = eyeTrackEmoji;
+                      } else {
+                          let pool = EMOJI_POOL.filter(e => e !== eyeTrackEmoji);
+                          current = pool[generateRandomNumber(0, pool.length - 1)];
+                      }
+
+                      setEyeTrackCurrentEmoji(current);
+                      setEyeTrackPos({
+                          x: generateRandomNumber(10, 90),
+                          y: generateRandomNumber(10, 90)
+                      });
+
+                      if (current === eyeTrackEmoji) {
+                          setEyeTrackCount(prev => prev + 1);
+                      }
+                  }, eyeTrackSpeed); 
+
+                  const timeout = setTimeout(() => {
+                      setEyeTrackPhase('input');
+                      setEyeTrackCurrentEmoji(null);
+                  }, roundDuration);
+                  
+                  return () => {
+                      clearInterval(eyeInterval);
+                      clearTimeout(timeout);
+                  }
+              }
+          }, [eyeTrackPhase, eyeTrackEmoji, eyeTrackSpeed]);
+
+
+          const startGame = () => {
+            if (exercise.type === 'tachistoscope_text') {
+                setTachiPhase('setup');
+                return;
+            }
+
+            setIsActive(true);
+            setScore(0);
+            const duration = exercise.type === 'eye_track_count' 
+                ? (settings.eyeTrackDuration || 300) 
+                : (settings.generalDuration || 60);
+                
+            setTimer(duration); 
+            setInputValue("");
+            setFeedback(null);
+            if(exercise.type === 'eye_track_count') {
+                setEyeTrackSpeed(settings.eyeTrackSpeed || 1000); 
+                setEyeTrackLevel(1);
+            }
+            generateLevel();
+          };
+
+          const startTachistoscope = () => {
+              const selectedText = allTexts.find(t => t.id === parseInt(tachiSettings.textId));
+              if (!selectedText) return;
+
+              const words = selectedText.content.trim().split(/\s+/);
+              setGameData({ title: selectedText.title, words });
+              setTachiWordIndex(0);
+              setTachiPhase('playing');
+              setTachiIsPlaying(true);
+              setIsActive(true);
+          };
+
+          const generateLevel = () => {
+            setInputValue("");
+            setShowContent(true);
+            setFeedback(null);
+            setCorrectAnswer("");
+
+            switch(exercise.type) {
+                case 'grid': 
+                    const target = WORD_POOL[generateRandomNumber(0, WORD_POOL.length - 1)];
+                    const others = Array.from({length: 15}, () => WORD_POOL[generateRandomNumber(0, WORD_POOL.length - 1)]);
+                    setGameData({ target, grid: shuffleArray([target, ...others]) });
+                    break;
+                case 'grid_diff': 
+                    const uniqueWords = shuffleArray(WORD_POOL).slice(0, 16);
+                    const normalPairs = uniqueWords.slice(0, 14).map(w => ({
+                        w1: w, w2: w, isTarget: false, id: Math.random(), found: false
+                    }));
+                    const diffPairs = uniqueWords.slice(14, 16).map(w => ({
+                        w1: w, w2: createTypo(w), isTarget: true, id: Math.random(), found: false
+                    }));
+                    setGameData({ 
+                        grid: shuffleArray([...normalPairs, ...diffPairs]), 
+                        foundCount: 0, totalTargets: 2 
+                    });
+                    break;
+                case 'math_logic': 
+                    const isTargetEven = Math.random() > 0.5;
+                    const numbers = Array.from({length: 16}, () => ({
+                        val: generateRandomNumber(1000, 9999), id: Math.random(), found: false
+                    })).map(n => ({
+                        ...n, isTarget: isTargetEven ? (n.val % 2 === 0) : (n.val % 2 !== 0)
+                    }));
+                    setGameData({ 
+                        numbers, targetType: isTargetEven ? 'Çift' : 'Tek',
+                        totalTargets: numbers.filter(n => n.isTarget).length, foundCount: 0
+                    });
+                    break;
+                case 'search_num':
+                    const targetNum = generateRandomNumber(100, 9999);
+                    const randomGrid = Array.from({length: 23}, () => generateRandomNumber(100, 9999));
+                    setGameData({ target: targetNum, grid: shuffleArray([targetNum, ...randomGrid]) });
+                    break;
+                case 'search_letter': 
+                    const char1 = ALPHABET[generateRandomNumber(0, ALPHABET.length - 1)];
+                    let char2 = ALPHABET[generateRandomNumber(0, ALPHABET.length - 1)];
+                    while(char1 === char2) char2 = ALPHABET[generateRandomNumber(0, ALPHABET.length - 1)];
+                    const targets = [char1, char2];
+                    const targetItems = Array.from({length: 10}, () => targets[generateRandomNumber(0, 1)]);
+                    const otherItems = Array.from({length: 30}, () => {
+                        let c = ALPHABET[generateRandomNumber(0, ALPHABET.length - 1)];
+                        while(targets.includes(c)) c = ALPHABET[generateRandomNumber(0, ALPHABET.length - 1)];
+                        return c;
+                    });
+                    setGameData({ targets, grid: shuffleArray([...targetItems, ...otherItems]).map((char, i) => ({
+                        char, id: i, found: false, isTarget: targets.includes(char)
+                    })), foundCount: 0, totalTargets: 10 });
+                    break;
+                case 'flash_memory': 
+                    const rawFlashWord = WORD_POOL[generateRandomNumber(0, WORD_POOL.length - 1)];
+                    const flashWord = randomizeCase(rawFlashWord);
+                    const duration = Math.max(500, flashWord.length * 100); 
+                    setGameData({ word: flashWord });
+                    setTimeout(() => setShowContent(false), duration);
+                    break;
+                case 'scramble_word': 
+                    const rawScrambleWord = WORD_POOL[generateRandomNumber(0, WORD_POOL.length - 1)];
+                    const scrambleWord = randomizeCase(rawScrambleWord);
+                    setGameData({ word: scrambleWord, scrambled: shuffleArray(scrambleWord.split('')).join('') });
+                    break;
+                case 'flash_sentence': 
+                    const sentence = SENTENCE_POOL[generateRandomNumber(0, SENTENCE_POOL.length - 1)];
+                    const sDuration = Math.max(1500, sentence.length * 70);
+                    setGameData({ sentence });
+                    setTimeout(() => setShowContent(false), sDuration);
+                    break;
+                case 'eye_track_count':
+                    const targetEmoji = EMOJI_POOL[generateRandomNumber(0, EMOJI_POOL.length - 1)];
+                    setEyeTrackEmoji(targetEmoji);
+                    setEyeTrackCount(0);
+                    setEyeTrackPhase('start');
+                    setGameData({ target: targetEmoji }); 
+                    break;
+                default:
+                    setGameData({ message: "Modül yükleniyor..." });
+            }
+          };
+
+          const handleGridClick = (item) => {
+            if (exercise.type === 'grid' && item === gameData.target) {
+                setScore(s => s + 10);
+                generateLevel();
+            }
+          };
+          const handleGridDiffClick = (itemIndex) => {
+              const item = gameData.grid[itemIndex];
+              if (item.found) return;
+              if (item.isTarget) {
+                  const newGrid = [...gameData.grid];
+                  newGrid[itemIndex] = { ...item, found: true };
+                  const newFoundCount = gameData.foundCount + 1;
+                  setGameData({ ...gameData, grid: newGrid, foundCount: newFoundCount });
+                  setScore(s => s + 10);
+                  if (newFoundCount >= gameData.totalTargets) setTimeout(() => generateLevel(), 300);
+              } else {
+                  setScore(s => Math.max(0, s - 5));
+              }
+          };
+          const handleLetterClick = (index) => {
+              const item = gameData.grid[index];
+              if (item.found) return;
+              if (item.isTarget) {
+                  const newGrid = [...gameData.grid];
+                  newGrid[index] = { ...item, found: true };
+                  const newFoundCount = gameData.foundCount + 1;
+                  setGameData({ ...gameData, grid: newGrid, foundCount: newFoundCount });
+                  setScore(s => s + 5);
+                  if (newFoundCount >= gameData.totalTargets) setTimeout(() => generateLevel(), 300);
+              } else {
+                  setScore(s => Math.max(0, s - 2));
+              }
+          };
+          const handleMathGridClick = (index) => {
+              const item = gameData.numbers[index];
+              if (item.found) return;
+              if (item.isTarget) {
+                  const newNumbers = [...gameData.numbers];
+                  newNumbers[index] = { ...item, found: true };
+                  const newFoundCount = gameData.foundCount + 1;
+                  setGameData({ ...gameData, numbers: newNumbers, foundCount: newFoundCount });
+                  setScore(s => s + 5);
+                  if (newFoundCount >= gameData.totalTargets) setTimeout(() => generateLevel(), 300);
+              } else {
+                  setScore(s => Math.max(0, s - 2));
+              }
+          };
+          const handleSearchNumClick = (val) => {
+              if (val === gameData.target) {
+                  setScore(s => s + 15);
+                  generateLevel();
+              } else {
+                  setScore(s => Math.max(0, s - 5));
+              }
+          };
+          const checkEyeTrackInput = () => {
+              const userGuess = parseInt(inputValue);
+              if (userGuess === eyeTrackCount) {
+                  setFeedback('correct');
+                  setScore(s => s + 50);
+                  setEyeTrackSpeed(prev => Math.max(300, prev - 100)); 
+                  setEyeTrackLevel(prev => prev + 1);
+              } else {
+                  setFeedback('incorrect');
+                  setCorrectAnswer(eyeTrackCount.toString());
+                  setEyeTrackSpeed(prev => Math.min(2000, prev + 100)); 
+              }
+              setEyeTrackPhase('result');
+              setTimeout(() => { generateLevel(); }, 3000);
+          };
+          const checkTextInput = () => {
+              if (feedback) return;
+              const input = inputValue.toLocaleLowerCase('tr').trim();
+              let isCorrect = false;
+              let correctText = "";
+              if (exercise.type === 'flash_memory' || exercise.type === 'scramble_word') {
+                  correctText = gameData.word;
+                  const target = gameData.word.toLocaleLowerCase('tr');
+                  if (input === target) isCorrect = true;
+              } else if (exercise.type === 'flash_sentence') {
+                  correctText = gameData.sentence;
+                  const targetWords = gameData.sentence.toLocaleLowerCase('tr').replace(/[.,!?;:]/g, '').split(/\s+/);
+                  const inputWords = input.replace(/[.,!?;:]/g, '').split(/\s+/);
+                  let correctWordCount = 0;
+                  const inputWordsSet = new Set(inputWords);
+                  targetWords.forEach(w => { if (inputWordsSet.has(w)) correctWordCount++; });
+                  setScore(s => s + (correctWordCount * 10));
+                  if (correctWordCount === targetWords.length) isCorrect = true;
+                  else isCorrect = false;
+              }
+              setFeedback(isCorrect ? 'correct' : 'incorrect');
+              setCorrectAnswer(correctText);
+              if (isCorrect) {
+                  if (exercise.type !== 'flash_sentence') setScore(s => s + 20); 
+                  setTimeout(() => { generateLevel(); }, 1000);
+              } else {
+                  setTimeout(() => { generateLevel(); }, 3000);
+              }
+          };
+
+          const renderGameArea = () => {
+              if (exercise.type === 'tachistoscope_text') {
+                  if (tachiPhase === 'setup') {
+                      return (
+                          <div className="flex flex-col items-center justify-center h-full max-w-lg mx-auto animate-in">
+                              <h3 className="text-2xl font-bold mb-6 text-indigo-800">Takistoskop Ayarları</h3>
+                              <div className="w-full space-y-6">
+                                  <div>
+                                      <label className="block text-sm font-bold text-gray-700 mb-2">Okunacak Metni Seçin</label>
+                                      <select 
+                                          value={tachiSettings.textId}
+                                          onChange={(e) => setTachiSettings({...tachiSettings, textId: e.target.value})}
+                                          className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                      >
+                                          {allTexts.map(t => (
+                                              <option key={t.id} value={t.id}>{t.title} (Seviye {t.level})</option>
+                                          ))}
+                                      </select>
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                                          Hız (Kelime/Dakika): <span className="text-indigo-600">{tachiSettings.wpm}</span>
+                                      </label>
+                                      <input 
+                                          type="range" min="10" max="800" step="10"
+                                          value={tachiSettings.wpm}
+                                          onChange={(e) => setTachiSettings({...tachiSettings, wpm: parseInt(e.target.value)})}
+                                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                      />
+                                      <p className="text-xs text-gray-500 mt-1">Daha yüksek değer = Daha hızlı geçiş</p>
+                                  </div>
+                                  <button onClick={startTachistoscope} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg hover:bg-indigo-700 shadow-lg transition-transform active:scale-95">
+                                      BAŞLAT
+                                  </button>
+                              </div>
+                          </div>
+                      );
+                  }
+                  if (gameData) {
+                      return (
+                          <div className="flex flex-col items-center justify-center h-full text-center">
+                              <div className="mb-12 text-gray-400 font-semibold uppercase tracking-wider text-sm">{gameData.title}</div>
+                              <div className="text-6xl font-black text-gray-800 h-40 flex items-center justify-center animate-in fade-in duration-75">
+                                  {gameData.words[tachiWordIndex]}
+                              </div>
+                              {!tachiIsPlaying && (
+                                  <div className="mt-8 text-green-600 font-bold text-2xl flex items-center gap-2">
+                                      <CheckCircle /> Metin Tamamlandı!
+                                  </div>
+                              )}
+                          </div>
+                      );
+                  }
+                  return null;
+              }
+
+              if (!gameData) return null;
+
+              if (exercise.type === 'eye_track_count') {
+                  if (eyeTrackPhase === 'start') {
+                      return (
+                          <div className="flex flex-col items-center justify-center h-full text-center animate-in">
+                              <div className="mb-4 flex flex-col items-center">
+                                  <span className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Seviye {eyeTrackLevel}</span>
+                                  <span className="text-xs text-gray-300">Hız: {eyeTrackSpeed}ms</span>
+                              </div>
+                              <h3 className="text-2xl font-bold mb-4">Bu Emojiyi Say:</h3>
+                              <div className="text-8xl mb-8 animate-bounce">{eyeTrackEmoji}</div>
+                              <button onClick={() => setEyeTrackPhase('anim')} className="px-8 py-3 bg-indigo-600 text-white rounded-xl text-xl font-bold hover:bg-indigo-700">BAŞLA</button>
+                          </div>
+                      );
+                  } else if (eyeTrackPhase === 'anim') {
+                      return (
+                          <div className="relative w-full h-96 bg-gray-50 border rounded-xl overflow-hidden">
+                              {eyeTrackCurrentEmoji && (
+                                  <div style={{ left: `${eyeTrackPos.x}%`, top: `${eyeTrackPos.y}%`, position: 'absolute' }} className="text-5xl transition-all duration-300 transform">
+                                      {eyeTrackCurrentEmoji}
+                                  </div>
+                              )}
+                          </div>
+                      );
+                  } else if (eyeTrackPhase === 'input' || eyeTrackPhase === 'result') {
+                      return (
+                          <div className="flex flex-col items-center justify-center h-full text-center relative animate-in">
+                              {feedback && (
+                                  <div className={`absolute inset-0 z-20 rounded-xl flex flex-col items-center justify-center p-6 text-center bg-white/95`}>
+                                      {feedback === 'correct' ? (
+                                          <><ThumbsUp size={64} className="text-green-600 mb-4" /><h3 className="text-3xl font-bold text-green-800">Doğru!</h3><p className="text-green-700 mt-2">Tam {eyeTrackCount} taneydi.</p><p className="text-sm text-green-600 mt-1">Seviye Artıyor!</p></>) : (
+                                          <><ThumbsDown size={64} className="text-red-600 mb-4" /><h3 className="text-3xl font-bold text-red-800">Yanlış!</h3><p className="text-xl mt-2">Doğru cevap: <strong>{correctAnswer}</strong></p></>)}
+                                  </div>
+                              )}
+                              <h3 className="text-2xl font-bold mb-4">Kaç tane {eyeTrackEmoji} gördün?</h3>
+                              <div className="flex gap-2">
+                                  <input type="number" value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="w-32 p-4 border-2 border-indigo-200 rounded-xl text-3xl text-center outline-none focus:border-indigo-600" autoFocus disabled={eyeTrackPhase === 'result'} />
+                                  <button onClick={checkEyeTrackInput} disabled={eyeTrackPhase === 'result'} className="px-6 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50">KONTROL</button>
+                              </div>
+                          </div>
+                      );
+                  }
+              }
+              if (exercise.type === 'grid') return (<div className="animate-in"><p className="text-center mb-4 text-xl">Bul: <strong className="text-indigo-600 text-2xl">{gameData.target}</strong></p><div className="grid grid-cols-4 gap-3">{gameData.grid.map((item, idx) => (<button key={idx} onClick={() => handleGridClick(item)} className="p-4 bg-gray-100 hover:bg-indigo-100 rounded text-lg font-medium transition active:scale-95 shadow-sm border border-gray-200">{item}</button>))}</div></div>);
+              if (exercise.type === 'grid_diff') return (<div className="h-full flex flex-col animate-in"><p className="text-center mb-4 text-lg text-gray-600">Çifti <strong>farklı olan</strong> 2 kutuyu bul!</p><div className="grid grid-cols-4 gap-3 flex-1">{gameData.grid.map((item, idx) => (<button key={item.id} onClick={() => handleGridDiffClick(idx)} className={`p-1 flex flex-col items-center justify-center rounded-lg border-2 transition-all duration-200 ${item.found ? 'bg-green-100 border-green-500 scale-95 opacity-50' : 'bg-white border-gray-200 hover:border-indigo-300 hover:shadow-md'}`}><span className="font-bold text-gray-800 text-sm">{item.w1}</span><span className="text-gray-300 text-[10px] my-0.5">-</span><span className="font-bold text-gray-800 text-sm">{item.w2}</span></button>))}</div></div>);
+              if (exercise.type === 'search_letter') return (<div className="h-full flex flex-col animate-in"><div className="flex justify-center items-center gap-4 mb-4 bg-yellow-50 p-2 rounded-lg"><span className="text-gray-600">Hedefler:</span>{gameData.targets.map((t, i) => (<span key={i} className="text-3xl font-black text-indigo-700">{t}</span>))}</div><div className="grid grid-cols-8 gap-2 flex-1">{gameData.grid.map((item, idx) => (<button key={item.id} onClick={() => handleLetterClick(idx)} className={`text-xl font-bold rounded-md transition-all duration-150 border ${item.found ? 'bg-green-500 text-white border-green-600' : 'bg-white text-gray-700 hover:bg-indigo-50 border-gray-200'}`}>{item.char}</button>))}</div><div className="text-center text-sm text-gray-400 mt-2">Toplam 10 tane var. Bulunan: {gameData.foundCount}</div></div>);
+              if (['flash_memory', 'scramble_word', 'flash_sentence'].includes(exercise.type)) { let displayContent = ""; let instruction = ""; if (exercise.type === 'flash_memory') { displayContent = showContent ? gameData.word : "???"; instruction = "Görünüp kaybolan kelimeyi yazın."; } else if (exercise.type === 'scramble_word') { displayContent = gameData.scrambled; instruction = "Karışık verilen kelimeyi düzeltin."; } else if (exercise.type === 'flash_sentence') { displayContent = showContent ? gameData.sentence : "???"; instruction = "Cümleyi hatırladığınız kadarıyla yazın."; } return (<div className="flex flex-col items-center justify-center h-full space-y-8 relative animate-in">{feedback && (<div className={`absolute inset-0 z-10 rounded-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-300 ${feedback === 'correct' ? 'bg-green-100/90' : 'bg-red-100/90'}`}>{feedback === 'correct' ? (<><ThumbsUp size={64} className="text-green-600 mb-4" /><h3 className="text-3xl font-bold text-green-800">Harika!</h3><p className="text-green-700 mt-2">Doğru bildin.</p></>) : (<><ThumbsDown size={64} className="text-red-600 mb-4" /><h3 className="text-3xl font-bold text-red-800">Yanlış!</h3><div className="mt-4 bg-white p-4 rounded-lg shadow-sm border border-red-200"><p className="text-sm text-gray-500 mb-1">Doğrusu:</p><p className="text-xl font-bold text-gray-800">{correctAnswer}</p></div></>)}</div>)}<div className="text-center w-full"><p className="text-gray-500 mb-4">{instruction}</p><div className={`text-3xl md:text-4xl font-bold text-indigo-800 h-32 flex items-center justify-center px-6 bg-indigo-50 rounded-xl w-full text-center shadow-inner ${exercise.type === 'flash_sentence' ? 'text-2xl' : ''}`}>{displayContent}</div></div>{(!showContent || exercise.type === 'scramble_word') && (<div className="w-full max-w-lg flex gap-2"><input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkTextInput()} className="flex-1 p-4 border-2 border-indigo-200 rounded-xl text-lg outline-none focus:border-indigo-600 transition" placeholder="Cevabınızı buraya yazın..." autoFocus disabled={!!feedback} /><button onClick={checkTextInput} disabled={!!feedback} className="px-6 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50">KONTROL</button></div>)}</div>); }
+              if (exercise.type === 'math_logic') return (<div className="h-full flex flex-col animate-in"><div className="text-center mb-4"><span className="text-xl">Bul: </span><span className={`text-2xl font-black px-4 py-1 rounded ${gameData.targetType === 'Çift' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{gameData.targetType.toUpperCase()} SAYILAR</span></div><div className="grid grid-cols-4 gap-3 flex-1">{gameData.numbers.map((num, idx) => (<button key={num.id} onClick={() => handleMathGridClick(idx)} className={`text-xl font-mono font-bold rounded-lg transition-all duration-200 shadow-sm border ${num.found ? 'bg-green-500 text-white scale-0' : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200'}`}>{num.val}</button>))}</div></div>);
+              if (exercise.type === 'search_num') return (<div className="h-full flex flex-col animate-in"><div className="bg-indigo-600 text-white p-4 rounded-xl text-center mb-6 shadow-md"><p className="text-sm opacity-80 mb-1">ARANAN HEDEF</p><p className="text-4xl font-mono font-bold tracking-widest">{gameData.target}</p></div><div className="grid grid-cols-6 gap-2 flex-1">{gameData.grid.map((num, idx) => (<button key={idx} onClick={() => handleSearchNumClick(num)} className="bg-white border border-gray-200 hover:bg-indigo-50 hover:border-indigo-300 rounded font-mono text-lg text-gray-600 font-medium transition active:scale-95 flex items-center justify-center">{num}</button>))}</div></div>);
+              return <div className="p-10 text-center">Egzersiz yükleniyor...</div>;
+          };
+
+          return (
+            <div className="bg-white p-6 rounded-xl shadow-lg border border-indigo-100 max-w-4xl mx-auto min-h-[600px] flex flex-col animate-in">
+              <div className="flex justify-between items-center mb-6 border-b pb-4">
+                <div>
+                   <h2 className="text-2xl font-bold">{exercise.title}</h2>
+                   <p className="text-gray-500">{exercise.category}</p>
+                </div>
+                <div className="flex items-center gap-6">
+                    <div className="text-center">
+                        <p className="text-xs text-gray-400">Puan</p>
+                        <p className="text-2xl font-bold text-indigo-600">{score}</p>
+                    </div>
+                    {exercise.type !== 'tachistoscope_text' && (<div className="text-center w-16"><p className="text-xs text-gray-400">Süre</p><p className={`text-2xl font-bold ${timer < 10 ? 'text-red-500' : 'text-gray-700'}`}>{timer}</p></div>)}
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X /></button>
+                </div>
+              </div>
+              <div className="flex-1 flex flex-col justify-center">
+                {!isActive && exercise.type !== 'tachistoscope_text' ? (
+                    <div className="text-center">
+                        <div className="mb-6 bg-indigo-50 inline-block p-6 rounded-full text-indigo-600"><Zap size={48} /></div>
+                        <h3 className="text-xl font-bold mb-2">Hazır mısın?</h3>
+                        <p className="text-gray-500 mb-6">Odaklan ve mümkün olan en yüksek puanı yap.</p>
+                        <button onClick={startGame} className="px-8 py-3 bg-indigo-600 text-white rounded-full text-lg font-semibold hover:bg-indigo-700 hover:scale-105 transition transform shadow-lg">BAŞLAT</button>
+                    </div>
+                ) : (renderGameArea())}
+              </div>
+            </div>
+          );
+        };
+
+        const SafeChart = ({ data, color = "#4f46e5" }) => {
+            if (!RechartsObj.LineChart) return <div>Grafik Yükleniyor...</div>;
+            return (
+               <ResponsiveContainer width="100%" height="100%">
+                 <LineChart data={data}>
+                   <CartesianGrid strokeDasharray="3 3" />
+                   <XAxis dataKey="date" fontSize={10} tick={{fill: '#6b7280'}} tickFormatter={(v) => v.split(' ')[0]} />
+                   <YAxis fontSize={10} tick={{fill: '#6b7280'}} />
+                   <Tooltip />
+                   <Line type="monotone" dataKey={data[0]?.wpm ? "wpm" : "score"} stroke={color} strokeWidth={3} dot={{r: 4}} />
+                 </LineChart>
+               </ResponsiveContainer>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
