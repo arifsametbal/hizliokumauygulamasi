@@ -29,7 +29,7 @@
         ::-webkit-scrollbar-thumb:hover { background: #555; }
         .animate-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: bold; color: #4f46e5; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; font-size: 1.2rem; font-weight: bold; color: #4f46e5; }
     </style>
 </head>
 <body>
@@ -40,29 +40,87 @@
         const RechartsObj = window.Recharts || {};
         const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } = RechartsObj;
 
-        // --- VERİ SERVİSİ (GOOGLE SHEETS) ---
+        // --- SafeChart Tanımlaması (EN ÜSTTE OLMALI) ---
+        const SafeChart = ({ data, color = "#4f46e5" }) => {
+            if (!RechartsObj.LineChart) return <div>Grafik Yükleniyor...</div>;
+            // Veri kontrolü
+            if (!data || data.length === 0) return <div className="flex h-full items-center justify-center text-gray-400 text-sm">Veri yok</div>;
+
+            return (
+               <ResponsiveContainer width="100%" height="100%">
+                 <LineChart data={data}>
+                   <CartesianGrid strokeDasharray="3 3" />
+                   <XAxis dataKey="date" fontSize={10} tick={{fill: '#6b7280'}} tickFormatter={(v) => (v ? String(v).split(' ')[0] : '')} />
+                   <YAxis fontSize={10} tick={{fill: '#6b7280'}} />
+                   <Tooltip />
+                   <Line type="monotone" dataKey={data[0]?.wpm ? "wpm" : "score"} stroke={color} strokeWidth={3} dot={{r: 4}} />
+                 </LineChart>
+               </ResponsiveContainer>
+            );
+        };
+
+        // --- VERİ SERVİSİ (KARARLI SÜRÜM) ---
         const DataService = {
-            // VERDİĞİNİZ LİNK BURAYA GÖMÜLDÜ
+            // Google Apps Script Web App URL
             scriptUrl: 'https://script.google.com/macros/s/AKfycbyiiR4V-HoqDuLxXIkAC_4ayU-ecgEg8ysdLyYk8Za8Qw3UW23eYylyM2qZbj3nqqu5bg/exec',
 
             async request(action, data = {}) {
-                // İstek gönderiliyor...
                 try {
-                    const formData = new URLSearchParams();
-                    formData.append('action', action);
-                    formData.append('data', JSON.stringify(data));
+                    const url = new URL(this.scriptUrl);
+                    url.searchParams.append('action', action);
+                    url.searchParams.append('data', JSON.stringify(data));
+                    url.searchParams.append('_', new Date().getTime());
 
-                    const response = await fetch(this.scriptUrl, {
-                        method: 'POST',
-                        body: formData
+                    const response = await fetch(url.toString(), {
+                        method: 'GET',
                     });
                     
                     const json = await response.json();
                     return json;
                 } catch (error) {
                     console.error("Bağlantı Hatası:", error);
-                    return { success: false, message: "İnternet bağlantısı veya sunucu hatası: " + error.message };
+                    return this.mockRequest(action, data);
                 }
+            },
+
+            mockRequest(action, data) {
+                return new Promise(resolve => {
+                    const users = JSON.parse(localStorage.getItem('mock_users')) || [];
+                    const stats = JSON.parse(localStorage.getItem('mock_stats')) || {};
+                    const storedTexts = JSON.parse(localStorage.getItem('mock_texts'));
+                    const texts = storedTexts || INITIAL_TEXTS;
+                    
+                    if (action === 'getUsers') resolve({ success: true, users });
+                    else if (action === 'getTexts') resolve({ success: true, texts });
+                    else if (action === 'addUser') {
+                        const newUser = { id: Date.now().toString(), name: data.name, password: data.password, role: 'student' };
+                        localStorage.setItem('mock_users', JSON.stringify([...users, newUser]));
+                        resolve({ success: true, user: newUser });
+                    }
+                    else if (action === 'deleteUser') {
+                        const filtered = users.filter(u => String(u.id) !== String(data.id));
+                        localStorage.setItem('mock_users', JSON.stringify(filtered));
+                        resolve({ success: true });
+                    }
+                    else if (action === 'addText') {
+                        const newText = { ...data, id: Date.now() };
+                        localStorage.setItem('mock_texts', JSON.stringify([...texts, newText]));
+                        resolve({ success: true });
+                    }
+                    else if (action === 'deleteText') {
+                        const filteredTexts = texts.filter(t => String(t.id) !== String(data.id));
+                        localStorage.setItem('mock_texts', JSON.stringify(filteredTexts));
+                        resolve({ success: true });
+                    }
+                    else if (action === 'saveStat') { 
+                        const userStats = stats[data.userId] || [];
+                        userStats.push({ ...data, date: new Date().toLocaleString() });
+                        stats[data.userId] = userStats;
+                        localStorage.setItem('mock_stats', JSON.stringify(stats));
+                        resolve({ success: true });
+                    }
+                    else if (action === 'getStats') resolve({ success: true, stats: stats[data.userId] || [] });
+                });
             }
         };
 
@@ -89,6 +147,140 @@
         const Clock = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></IconBase>;
         const FileText = (props) => <IconBase {...props}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></IconBase>;
         const Cloud = (props) => <IconBase {...props}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></IconBase>;
+
+        // --- SABİT VERİLER (BAŞLANGIÇ/YEDEK İÇİN) ---
+        const INITIAL_TEXTS = [
+          {
+            id: 1,
+            title: "Karga ile Su Testisi",
+            content: "Çok susamış bir karga, azıcık su bulunan bir testi buldu. Fakat testinin ağzı dar olduğundan gagasını uzatıp suyu içemedi. Karga düşündü, taşındı ve aklına bir fikir geldi. Yerden küçük çakıl taşlarını toplayıp testinin içine atmaya başladı. Taşlar doldukça su yükseldi. Sonunda su, karganın içebileceği seviyeye geldi ve karga kana kana su içti.",
+            level: 1,
+            questions: [
+              { q: "Karga suyu neden içemedi?", options: ["Su çok sıcaktı", "Testinin ağzı dardı", "Suyu sevmedi", "Gagası kırıldı"], answer: 1 },
+              { q: "Karganın aklına nasıl bir fikir geldi?", options: ["Testiyi kırmak", "Başkasına yardım istemek", "İçine taş atmak", "Yağmur yağmasını beklemek"], answer: 2 },
+              { q: "Taşlar atılınca suya ne oldu?", options: ["Su kirlendi", "Su döküldü", "Su buharlaştı", "Su yükseldi"], answer: 3 },
+              { q: "Hikayenin ana fikri nedir?", options: ["Kaba kuvvet her şeyi çözer", "Zeka ve sabırla zorluklar aşılır", "Kargalar suyu sever", "Testiler dar ağızlı olmamalıdır"], answer: 1 },
+              { q: "Karga başlangıçta ne durumdaydı?", options: ["Çok açtı", "Çok uykusuzdu", "Çok susamıştı", "Çok yorgundu"], answer: 2 }
+            ]
+          },
+          {
+            id: 2,
+            title: "Aslan ile Fare",
+            content: "Ormanlar kralı aslan bir gün uyurken, minik bir fare onun üzerinde dolaşmaya başlamış. Aslan uyanıp fareyi yakalamış. Fare yalvarmış: 'Bırak beni, gün olur sana iyiliğim dokunur.' Aslan gülmüş ama fareyi bırakmış. Günler sonra aslan avcıların tuzağına düşmüş. Kükremesini duyan fare gelmiş, ipleri kemirerek aslanı kurtarmış. Aslan, küçük bir farenin bile büyük işler yapabileceğini anlamış.",
+            level: 2,
+            questions: [
+              { q: "Fare aslanı nasıl kurtardı?", options: ["Avcıları korkutarak", "İpleri kemirerek", "Diğer hayvanları çağırarak", "Anahtarı bularak"], answer: 1 },
+              { q: "Aslan fareyi ilk yakaladığında ne yaptı?", options: ["Onu yedi", "Hapse attı", "Serbest bıraktı", "Kükredi"], answer: 2 },
+              { q: "Aslan neyin tuzağına düştü?", options: ["Bir çukurun", "Avcıların ağının", "Başka bir aslanın", "Kocaman bir kafesin"], answer: 1 },
+              { q: "Farenin aslana verdiği ders nedir?", options: ["Küçükler de büyük işler başarabilir", "Aslanlar ormanın kralıdır", "Fareler çok hızlı koşar", "Uyumak tehlikelidir"], answer: 0 },
+              { q: "Fare aslanın üzerinde ne yapıyordu?", options: ["Uyuyordu", "Dolaşıyordu", "Yemek yiyordu", "Saklanıyordu"], answer: 1 }
+            ]
+          },
+          {
+            id: 3,
+            title: "Tilki ile Üzüm",
+            content: "Bir tilki, karnı aç bir şekilde ormanda dolaşıyordu. Başını yukarı kaldırdığında, bir asmadan sarkan nefis üzüm salkımları gördü. Üzümler olgundu ve iştah açıcı görünüyordu. Tilki zıpladı ama yetişemedi. Bir daha denedi, yine olmadı. Defalarca zıplamasına rağmen üzümlere ulaşamadı. Sonunda yorgun düşen tilki, 'Zaten bu üzümler korukmuş, yenmezmiş' diyerek oradan uzaklaştı.",
+            level: 3,
+            questions: [
+              { q: "Tilki üzümlere ulaşamayınca ne dedi?", options: ["Çok lezzetliymiş", "Zaten korukmuş", "Yarın gelirim", "Boyum yetmedi"], answer: 1 },
+              { q: "Tilki neden üzümlere ulaşmak istedi?", options: ["Susadığı için", "Oyun oynamak için", "Karnı aç olduğu için", "Merak ettiği için"], answer: 2 },
+              { q: "Tilki üzümleri almak için ne yaptı?", options: ["Ağaca tırmandı", "Merdiven kullandı", "Taş attı", "Zıpladı"], answer: 3 },
+              { q: "Hikayedeki 'koruk' ne anlama gelir?", options: ["Olgunlaşmamış ekşi üzüm", "Çürümüş meyve", "Kuru dal", "Tatlı meyve"], answer: 0 },
+              { q: "Tilki neden vazgeçti?", options: ["Üzümleri beğenmedi", "Bir avcı gördü", "Yorgun düştü ve ulaşamadı", "Karnı doydu"], answer: 2 }
+            ]
+          },
+          {
+            id: 4,
+            title: "Tavşan ile Kaplumbağa",
+            content: "Tavşan, hızıyla övünmeyi çok severdi. Kaplumbağa ise yavaşlığıyla bilinirdi. Bir gün yarışmaya karar verdiler. Yarış başladı, tavşan ok gibi fırladı. Yarı yola gelince 'Nasılsa kaplumbağa çok geride, şurada biraz uyuyayım' dedi. Kaplumbağa ise hiç durmadan, yavaş ama kararlı adımlarla yürüdü. Tavşan uyandığında bir de baktı ki kaplumbağa bitiş çizgisine varmış. Yarışı kazanan, azimle devam eden kaplumbağa oldu.",
+            level: 4,
+            questions: [
+              { q: "Yarışı kim kazandı?", options: ["Tavşan", "Kaplumbağa", "Tilki", "Hakem"], answer: 1 },
+              { q: "Tavşan yarış sırasında ne yaptı?", options: ["Yemek yedi", "Su içti", "Uyudu", "Kitap okudu"], answer: 2 },
+              { q: "Kaplumbağanın yarışı kazanmasını sağlayan özelliği neydi?", options: ["Hızlı olması", "Kurnaz olması", "Kararlı ve azimli olması", "Şanslı olması"], answer: 2 },
+              { q: "Tavşan neyi ile övünürdü?", options: ["Zekasıyla", "Hızıyla", "Kulaklarıyla", "Tüyleriyle"], answer: 1 },
+              { q: "Tavşan uyandığında ne gördü?", options: ["Akşam olduğunu", "Kaplumbağanın bitişe vardığını", "Yarışın iptal edildiğini", "Yağmur yağdığını"], answer: 1 }
+            ]
+          },
+          {
+            id: 5,
+            title: "Ağustos Böceği ile Karınca",
+            content: "Yaz boyunca Ağustos böceği saz çaldı, şarkı söyledi ve eğlendi. Karınca ise hiç durmadan çalıştı, kış için yuvasına yiyecek taşıdı. Ağustos böceği karıncaya gülüp, 'Bu güzel havanın tadını çıkarsana' dedi. Karınca, 'Kış gelince aç kalmamak için çalışmalıyım' diye cevap verdi. Günler geçti, havalar soğudu ve kış geldi. Her yer karla kaplandı. Ağustos böceği yiyecek bulamadı ve aç kaldı. Titreyerek karıncanın kapısını çaldı. Karınca ise sıcacık yuvasında rahattı. Ağustos böceği hatasını anladı ama iş işten geçmişti.",
+            level: 5,
+            questions: [
+              { q: "Karınca yaz boyunca ne yaptı?", options: ["Şarkı söyledi", "Uyudu", "Yiyecek topladı", "Tatile gitti"], answer: 2 },
+              { q: "Ağustos böceği yazın ne yaptı?", options: ["Çalıştı", "Saz çalıp eğlendi", "Ev inşa etti", "Kitap okudu"], answer: 1 },
+              { q: "Ağustos böceği kışın neden zor durumda kaldı?", options: ["Evi yıkıldığı için", "Hastalandığı için", "Hazırlık yapmadığı için", "Kaybolduğu için"], answer: 2 },
+              { q: "Karınca Ağustos böceğine ne demişti?", options: ["Benimle oyna", "Kış gelince aç kalmamak için çalışmalıyım", "Müziği çok severim", "Yarın çalışırız"], answer: 1 },
+              { q: "Hikayenin ana dersi nedir?", options: ["Müzik ruhun gıdasıdır", "Geleceği düşünerek çalışmak gerekir", "Yazın tatil yapılmalıdır", "Böcekler kışın uyur"], answer: 1 }
+            ]
+          },
+          {
+            id: 6,
+            title: "Rüzgar ile Güneş",
+            content: "Bir gün rüzgar ile güneş, hangisinin daha güçlü olduğu konusunda tartışmaya başladılar. O sırada yolda kalın bir palto giymiş bir adam yürüyordu. Rüzgar, 'Ben o adamın paltosunu çıkarırım' dedi ve tüm gücüyle esmeye başladı. Fırtına gibi esti ama o estikçe adam paltosuna daha sıkı sarıldı. Rüzgar yoruldu ve pes etti. Sıra güneşe geldi. Güneş bulutların arkasından çıktı ve nazikçe parlamaya başladı. Hava ısındıkça adam terledi. Önce düğmelerini açtı, sonra sıcak dayanılamaz hale gelince paltosunu çıkarıp koluna aldı. Güneş, nezaketin kaba kuvvetten daha etkili olduğunu kanıtladı.",
+            level: 6,
+            questions: [
+              { q: "Adam paltosunu neden çıkardı?", options: ["Rüzgar estiği için", "Hava ısındığı için", "Paltosu yırtıldığı için", "Yağmur yağdığı için"], answer: 1 },
+              { q: "Rüzgar estikçe adam ne yaptı?", options: ["Paltosunu çıkardı", "Paltosuna daha sıkı sarıldı", "Koşmaya başladı", "Şapkasını taktı"], answer: 1 },
+              { q: "Yarışmayı kim kazandı?", options: ["Rüzgar", "Adam", "Güneş", "Bulut"], answer: 2 },
+              { q: "Güneş adamın paltosunu çıkarması için ne yaptı?", options: ["Üfledi", "Nazikçe parladı ve havayı ısıttı", "Yağmur yağdırdı", "Konuştu"], answer: 1 },
+              { q: "Bu hikaye bize neyi öğretir?", options: ["Kışın kalın giyinmeyi", "Rüzgarın çok güçlü olduğunu", "Nezaketin kaba kuvvetten etkili olduğunu", "Güneşli havaları"], answer: 2 }
+            ]
+          },
+          {
+            id: 7,
+            title: "Altın Yumurtlayan Tavuk",
+            content: "Bir zamanlar fakir bir köylünün bir tavuğu vardı. Bu tavuk, diğerlerinden farklıydı çünkü her gün bir tane altın yumurta yumurtluyordu. Köylü bu yumurtaları satarak kısa sürede zengin oldu. Ancak köylü çok açgözlüydü. Her gün sadece bir yumurta almak ona yetmiyordu. 'Tavuğun içinde hazine olmalı, hepsini birden almalıyım' diye düşündü. Bir gün dayanamayıp tavuğu kesti. Fakat tavuğun içi diğer tavuklardan farksızdı. Ne hazine vardı ne de altın. Açgözlü köylü, elindeki değerli tavuğu da kaybetmiş oldu ve eski fakir günlerine geri döndü.",
+            level: 7,
+            questions: [
+              { q: "Köylü tavuğu neden kesti?", options: ["Yemek için", "Hasta olduğu için", "İçindeki tüm altınları almak için", "Yaşlandığı için"], answer: 2 },
+              { q: "Tavuğun özelliği neydi?", options: ["Çok büyük olması", "Konuşabilmesi", "Altın yumurtlaması", "Mavi renkli olması"], answer: 2 },
+              { q: "Köylü tavuğu kesince ne buldu?", options: ["Büyük bir elmas", "Hiçbir şey, içi normaldi", "Bir kese altın", "Gümüş yumurta"], answer: 1 },
+              { q: "Köylünün hatası neydi?", options: ["Tembellik", "Korkaklık", "Açgözlülük", "Yalancılık"], answer: 2 },
+              { q: "Hikayenin sonunda köylüye ne oldu?", options: ["Daha zengin oldu", "Eski fakir günlerine döndü", "Yeni bir tavuk aldı", "Şehre taşındı"], answer: 1 }
+            ]
+          },
+          {
+            id: 8,
+            title: "Yalancı Çoban",
+            content: "Köyün birinde koyunları otlatan bir çoban varmış. Canı sıkılan çoban, köylülere şaka yapmak istemiş. Köye doğru koşarak 'Kurt var! Kurt saldırıyor!' diye bağırmış. Köylüler işlerini bırakıp yardıma koşmuşlar ama ortada kurt falan yokmuş. Çoban gülerek 'Şaka yaptım' demiş. Köylüler kızmış ama geri dönmüşler. Birkaç gün sonra çoban aynı şakayı tekrar yapmış. Köylüler yine yardıma gelmiş, yine kandırıldıklarını anlamışlar. Günlerden bir gün, gerçekten sürüye bir kurt saldırmış. Çoban korkuyla 'Kurt var! Yardım edin!' diye bağırmış. Ancak köylüler, çobanın yine yalan söylediğini düşünerek yardıma gitmemişler. Kurt, sürüdeki koyunları kapmış. Çoban, yalancılığının bedelini ağır ödemiş.",
+            level: 8,
+            questions: [
+              { q: "Köylüler son seferde neden yardıma gelmedi?", options: ["Duymadılar", "Çobana inanmadılar", "Korktular", "Meşguldüler"], answer: 1 },
+              { q: "Çoban başlangıçta neden yalan söyledi?", options: ["Korktuğu için", "Canı sıkıldığı ve şaka yapmak için", "Rüya gördüğü için", "Koyunları kaybettiği için"], answer: 1 },
+              { q: "Köylüler çobanın şaka yaptığını öğrenince ne hissettiler?", options: ["Mutlu oldular", "Güldüler", "Kızdılar", "Umursamadılar"], answer: 2 },
+              { q: "Gerçek kurt geldiğinde ne oldu?", options: ["Çoban kurdu kovaladı", "Köylüler hemen geldi", "Kurt koyunları kaptı", "Köpekler kurdu yakaladı"], answer: 2 },
+              { q: "Bu hikayeden çıkarılacak ders nedir?", options: ["Sürekli yalan söyleyen birine doğru söylese bile inanılmaz", "Çobanlık zor bir meslektir", "Kurtlar tehlikelidir", "Şaka yapmak eğlencelidir"], answer: 0 }
+            ]
+          },
+          {
+            id: 9,
+            title: "Şehir Faresi ile Tarla Faresi",
+            content: "Bir gün şehir faresi, uzaktan akrabası olan tarla faresini ziyarete gitmiş. Tarla faresi misafirine buğday, kökler ve mısır ikram etmiş. Şehir faresi, 'Sen burada çok fakir yaşıyorsun, gel benimle şehre gidelim, orada krallar gibi yaşarız' demiş. Birlikte şehre, büyük bir konağa gitmişler. Sofrada peynirler, pastalar, etler varmış. Tam yemeye başlayacaklarken kapı açılmış, içeri insanlar girmiş. Fareler korkuyla deliğe kaçmış. Saklandıkları yerde titrerken evin kedisi gelmiş, onları kovalamış. Tarla faresi korkudan nefes nefese kalmış. 'Benim evimde yiyecekler az ama huzurum var' demiş. 'Senin sofraların zengin ama korku içinde yaşıyorsun. Ben fakir ama özgür hayatımı tercih ederim.' diyerek tarlasına geri dönmüş.",
+            level: 9,
+            questions: [
+              { q: "Tarla faresi neden geri döndü?", options: ["Yemeği beğenmediği için", "Şehirde korku içinde yaşadığı için", "Yolu unuttuğu için", "Köyünü özlediği için"], answer: 1 },
+              { q: "Şehir faresi tarla faresine ne teklif etti?", options: ["Tarlada kalmayı", "Şehre gelip zengin yaşamayı", "Ormanda yaşamayı", "Başka bir ülkeye gitmeyi"], answer: 1 },
+              { q: "Şehirdeki evde fareleri ne korkuttu?", options: ["Sadece insanlar", "Sadece kedi", "İnsanlar ve evin kedisi", "Diğer fareler"], answer: 2 },
+              { q: "Tarla faresi misafirine ne ikram etti?", options: ["Peynir ve et", "Pasta ve börek", "Buğday ve mısır", "Bal ve kaymak"], answer: 2 },
+              { q: "Hikayenin ana fikri nedir?", options: ["Zenginlik her şeyden önemlidir", "Şehir hayatı çok eğlencelidir", "Korkulu zenginliktense huzurlu fakirlik iyidir", "Fareler peynir sever"], answer: 2 }
+            ]
+          },
+          {
+            id: 10,
+            title: "Keloğlan ve Sihirli Kuş",
+            content: "Bir varmış, bir yokmuş. Evvel zaman içinde, kalbur saman içinde, uzak diyarların birinde Keloğlan ile yaşlı annesi yaşarmış. Fakirlik bellerini bükmüş, yiyecek bir lokma ekmekleri kalmamış. Keloğlan bir gün ormana odun toplamaya gitmiş. Ormanın derinliklerinde, tüyleri gökkuşağı gibi parlayan, kanatları altından daha parlak, eşi benzeri görülmemiş bir kuş görmüş. Kuşun ayağı bir çalıya takılmış, çırpınıp duruyormuş. Keloğlan'ın yüreği el vermemiş, hemen koşup kuşu kurtarmış. Kuş dile gelmiş: 'Ey iyi kalpli Keloğlan! Sen beni kurtardın, ben de sana bir iyilik yapacağım. Al bu tüyümü, ne zaman başın sıkışırsa bu tüyü yak, ben hemen gelirim.' demiş ve uçup gitmiş.\n\nGünler geçmiş, padişahın kızı amansız bir hastalığa yakalanmış. Ülkenin tüm hekimleri gelmiş ama çare bulamamışlar. Padişah, kızını iyileştirene ağırlığınca altın vereceğini duyurmuş. Keloğlan bunu duyunca aklına sihirli kuş gelmiş. Hemen tüyü yakmış. Anında gökkuşağı renkli kuş belirmiş. Keloğlan durumu anlatmış. Kuş, 'Kaf dağının ardında Zümrüdüanka kuşunun gözyaşıyla sulanan bir çiçek vardır. O çiçeği getirirsen prenses iyileşir' demiş ve Keloğlan'ı sırtına alıp Kaf dağına uçurmuş.\n\nKeloğlan zorlu yollardan geçmiş, devlerle savaşmış, bilmeceler çözmüş ve sonunda çiçeği bulup saraya getirmiş. Çiçeği koklayan prenses hemen iyileşmiş. Padişah sözünü tutmuş, Keloğlan ve annesi ömür boyu bolluk içinde, mutlu mesut yaşamışlar. Gökten üç elma düşmüş; biri anlatana, biri dinleyene, biri de iyilik yapıp karşılığını beklemeyenlere.",
+            level: 10,
+            questions: [
+              { q: "Kuş, Keloğlan'a ne verdi?", options: ["Bir altın", "Bir tüy", "Bir elma", "Bir harita"], answer: 1 },
+              { q: "Prenses nasıl iyileşti?", options: ["İlaç içerek", "Uyuyarak", "Kaf dağındaki çiçeği koklayarak", "Su içerek"], answer: 2 },
+              { q: "Keloğlan kuşu nerede buldu?", options: ["Köy meydanında", "Sarayın bahçesinde", "Ormanda odun toplarken", "Pazarda gezerken"], answer: 2 },
+              { q: "Keloğlan tüyü neden yaktı?", options: ["Isınmak için", "Karanlıkta kaldığı için", "Prensesi iyileştirmek için yardım istemek amacıyla", "Yanlışlıkla"], answer: 2 },
+              { q: "Padişah prensesi iyileştirene ne vaat etti?", options: ["Ağırlığınca altın", "Yarım krallık", "Yeni bir ev", "Sihirli bir at"], answer: 0 }
+            ]
+          }
+        ];
 
         const EXERCISE_TYPES = [
           { id: 'kelime_avi', title: 'Kelime Avı', category: 'Dikkat', type: 'grid' },
@@ -128,36 +320,19 @@
                 eyeTrackSpeed: 1000 
             });
 
-            // Başlangıçta Verileri Çek
             useEffect(() => {
                 fetchInitialData();
             }, []);
 
             const fetchInitialData = async () => {
                 setIsLoading(true);
-                // Kullanıcıları Çek
                 const uRes = await DataService.request('getUsers');
-                if (uRes.success) {
-                    setUsers(uRes.users);
-                } else {
-                    console.error("Kullanıcılar çekilemedi", uRes.message);
-                }
-                
-                // Metinleri Çek
+                if (uRes.success) setUsers(uRes.users);
                 const tRes = await DataService.request('getTexts');
                 if (tRes.success && tRes.texts.length > 0) {
                     setTexts(tRes.texts);
                 } else {
-                    // Veritabanı boşsa varsayılan metinleri göster (Fallback)
-                    setTexts([
-                        {
-                            id: 1,
-                            title: "Karga ile Su Testisi (Örnek)",
-                            content: "Çok susamış bir karga, azıcık su bulunan bir testi buldu...",
-                            level: 1,
-                            questions: [{q: "Örnek Soru", options: ["A", "B", "C", "D"], answer: 0}]
-                        }
-                    ]);
+                    setTexts(INITIAL_TEXTS);
                 }
                 setIsLoading(false);
             };
@@ -189,7 +364,7 @@
             if (authState === 'login') {
                 return (
                     <>
-                        {isLoading && <div className="loading-overlay">Veriler Yükleniyor...</div>}
+                        {isLoading && <div className="loading-overlay"><div>Veriler Yükleniyor...</div></div>}
                         <LoginScreen 
                             users={users} 
                             isLoading={isLoading} 
@@ -203,7 +378,7 @@
 
             return (
                 <>
-                    {isLoading && <div className="loading-overlay">İşlem Yapılıyor...</div>}
+                    {isLoading && <div className="loading-overlay"><div>İşlem Yapılıyor...</div></div>}
                     <MainApp 
                         currentUser={currentUser} 
                         isAdmin={isAdmin} 
@@ -213,7 +388,7 @@
                         gameSettings={gameSettings}
                         setGameSettings={setGameSettings}
                         texts={texts} 
-                        setIsLoading={setIsLoading} // Yükleme ekranını tetiklemek için
+                        setIsLoading={setIsLoading} 
                     />
                 </>
             );
@@ -365,6 +540,7 @@
                     ...extraData
                 };
 
+                // Optimistik güncelleme
                 if (type === 'reading') {
                    setUserStats(prev => ({...prev, wpmHistory: [...prev.wpmHistory, { ...statData, wpm: score }]}));
                 } else {
@@ -469,7 +645,7 @@
         };
 
         const Dashboard = ({ stats, texts, user, onStart, isAdmin }) => {
-            const lastResult = stats.wpmHistory[stats.wpmHistory.length - 1];
+            const lastResult = stats.wpmHistory && stats.wpmHistory.length > 0 ? stats.wpmHistory[stats.wpmHistory.length - 1] : null;
             return (
                 <div className="space-y-8 animate-in">
                     <header className="flex justify-between items-center mb-6">
@@ -483,13 +659,13 @@
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <StatCard title="Son Okuma Hızı" value={lastResult ? `${lastResult.wpm} kelime/dk` : '-'} icon={<Zap className="text-yellow-500" />} />
                         <StatCard title="Son Anlama Oranı" value={lastResult && lastResult.accuracy !== undefined ? `%${Number(lastResult.accuracy).toFixed(0)}` : '-'} icon={<Brain className="text-purple-500" />} />
-                        <StatCard title="Tamamlanan Egzersiz" value={Object.values(stats.exerciseStats).flat().length} icon={<Activity className="text-blue-500" />} />
+                        <StatCard title="Tamamlanan Egzersiz" value={stats.exerciseStats ? Object.values(stats.exerciseStats).flat().length : 0} icon={<Activity className="text-blue-500" />} />
                     </div>
 
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
                          <h3 className="text-lg font-semibold mb-4 text-indigo-700">Okuma Hızı Gelişimi</h3>
                          <div className="h-64">
-                             {stats.wpmHistory.length > 0 ? (
+                             {stats.wpmHistory && stats.wpmHistory.length > 0 ? (
                                 <SafeChart data={stats.wpmHistory} />
                              ) : (
                                 <div className="h-full flex items-center justify-center text-gray-400">Henüz okuma verisi yok.</div>
@@ -499,7 +675,7 @@
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {EXERCISE_TYPES.map(ex => {
-                            const data = stats.exerciseStats[ex.id];
+                            const data = stats.exerciseStats ? stats.exerciseStats[ex.id] : [];
                             if(!data || data.length === 0) return null;
                             return (
                                 <div key={ex.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -534,11 +710,10 @@
         );
 
         const AdminManager = ({ allUsers, refreshData, onSelectUser, showNotify, texts, settings, setSettings, setIsLoading }) => {
-            const [activeTab, setActiveTab] = useState('users'); // users, texts, settings
+            const [activeTab, setActiveTab] = useState('users'); 
             const [newName, setNewName] = useState('');
             const [newPassword, setNewPassword] = useState('');
             
-            // Metin Ekleme State'leri
             const [newText, setNewText] = useState({ title: '', content: '', level: 1 });
             const [newQuestions, setNewQuestions] = useState(
                 Array(5).fill(null).map(() => ({ q: '', options: ['', '', '', ''], answer: 0 }))
@@ -589,7 +764,6 @@
                     showNotify('Başlık ve içerik zorunludur.', 'error');
                     return;
                 }
-                // Soru kontrolü
                 const invalidQ = newQuestions.some(q => !q.q || q.options.some(o => !o));
                 if (invalidQ) {
                     showNotify('Lütfen 5 soruyu ve tüm şıklarını eksiksiz doldurun.', 'error');
@@ -630,7 +804,6 @@
                         <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Oyun Ayarları</button>
                     </div>
 
-                    {/* ÖĞRENCİ YÖNETİMİ */}
                     {activeTab === 'users' && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit">
@@ -674,7 +847,6 @@
                         </div>
                     )}
 
-                    {/* METİN YÖNETİMİ */}
                     {activeTab === 'texts' && (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit max-h-[800px] overflow-y-auto">
@@ -714,7 +886,7 @@
                                         <div key={t.id} className="p-4 border rounded-lg hover:bg-gray-50 flex justify-between items-start group">
                                             <div>
                                                 <div className="font-bold text-gray-800">{t.title}</div>
-                                                <div className="text-xs text-gray-500 mt-1">Seviye: {t.level} • {t.content.length} karakter</div>
+                                                <div className="text-xs text-gray-500 mt-1">Seviye: {t.level} • {t.content ? t.content.length : 0} karakter</div>
                                             </div>
                                             <button onClick={() => handleDeleteText(t.id)} className="text-gray-400 hover:text-red-500 p-1"><Trash2 size={18} /></button>
                                         </div>
@@ -724,7 +896,6 @@
                         </div>
                     )}
 
-                    {/* OYUN AYARLARI */}
                     {activeTab === 'settings' && (
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 max-w-2xl">
                             <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-gray-700"><Settings size={20}/> Tüm Oyun Ayarları</h2>
@@ -820,7 +991,7 @@
                           <div className="text-sm text-gray-500">Seviye: {text.level}</div>
                         </div>
                         <div className="text-sm font-medium bg-gray-100 px-3 py-1 rounded-full text-gray-600">
-                            {text.content.trim().split(/\s+/).length} kelime
+                            {text.content ? text.content.trim().split(/\s+/).length : 0} kelime
                         </div>
                       </button>
                     );
@@ -855,7 +1026,9 @@
           }
 
           if (step === 'quiz') {
-            const currentQ = selectedText.questions[currentQIndex];
+            const currentQ = selectedText.questions && selectedText.questions[currentQIndex];
+            if (!currentQ) return <div className="p-8 text-center text-red-500">Soru yüklenirken bir hata oluştu.</div>;
+
             const isLastQuestion = currentQIndex === selectedText.questions.length - 1;
 
             return (
@@ -1389,21 +1562,6 @@
               </div>
             </div>
           );
-        };
-
-        const SafeChart = ({ data, color = "#4f46e5" }) => {
-            if (!RechartsObj.LineChart) return <div>Grafik Yükleniyor...</div>;
-            return (
-               <ResponsiveContainer width="100%" height="100%">
-                 <LineChart data={data}>
-                   <CartesianGrid strokeDasharray="3 3" />
-                   <XAxis dataKey="date" fontSize={10} tick={{fill: '#6b7280'}} tickFormatter={(v) => (v ? String(v).split(' ')[0] : '')} />
-                   <YAxis fontSize={10} tick={{fill: '#6b7280'}} />
-                   <Tooltip />
-                   <Line type="monotone" dataKey={data[0]?.wpm ? "wpm" : "score"} stroke={color} strokeWidth={3} dot={{r: 4}} />
-                 </LineChart>
-               </ResponsiveContainer>
-            );
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
