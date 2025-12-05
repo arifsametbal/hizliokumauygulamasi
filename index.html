@@ -1391,6 +1391,21 @@
           );
         };
 
+        const SafeChart = ({ data, color = "#4f46e5" }) => {
+            if (!RechartsObj.LineChart) return <div>Grafik Yükleniyor...</div>;
+            return (
+               <ResponsiveContainer width="100%" height="100%">
+                 <LineChart data={data}>
+                   <CartesianGrid strokeDasharray="3 3" />
+                   <XAxis dataKey="date" fontSize={10} tick={{fill: '#6b7280'}} tickFormatter={(v) => (v ? String(v).split(' ')[0] : '')} />
+                   <YAxis fontSize={10} tick={{fill: '#6b7280'}} />
+                   <Tooltip />
+                   <Line type="monotone" dataKey={data[0]?.wpm ? "wpm" : "score"} stroke={color} strokeWidth={3} dot={{r: 4}} />
+                 </LineChart>
+               </ResponsiveContainer>
+            );
+        };
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
