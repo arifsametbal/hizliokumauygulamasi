@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hızlı Okuma Pro - Akıllı Öğrenci Takip Sistemi</title>
+    <title>Hızlı Okuma - Akıllı Öğrenci Takip Sistemi</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -160,7 +160,6 @@
         const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
         const randomizeCase = (w) => Math.random() > 0.5 ? w.charAt(0).toLowerCase() + w.slice(1) : w.charAt(0).toUpperCase() + w.slice(1);
         
-        // Akıllı Typo Algoritması
         const createTypo = (word) => {
           if (!word || word.length < 2) return word + 'x';
           const vowels = "aeıioöuü";
@@ -236,7 +235,31 @@
             "Okulda yeni arkadaşlar edindim.", "Ödevlerimi zamanında bitirdim.", "Akşam yemeğinde tavuk yedik.",
             "Sabah erkenden kalktım.", "Dişlerimi günde iki kez fırçalarım.", "Ellerimizi sık sık yıkamalıyız.",
             "Sağlıklı beslenmek önemlidir.", "Spor yapmak vücuda iyi gelir.", "Müzik dinlemek beni rahatlatır.",
-            "Resim yapmayı öğrenmek istiyorum.", "Yaz tatilinde denize gireceğim.", "Kışın kardan adam yaparız."
+            "Resim yapmayı öğrenmek istiyorum.", "Yaz tatilinde denize gireceğim.", "Kışın kardan adam yaparız.",
+            "Sonbaharda yapraklar dökülür.", "İlkbaharda çiçekler açar.", "Doğayı korumalıyız.", "Hayvanlara zarar vermemeliyiz.",
+            "Yaşlılara yardım etmeliyiz.", "Küçüklere sevgi göstermeliyiz.", "Yalan söylemek kötüdür.",
+            "Dürüst olmak erdemdir.", "Çalışkan olmak başarı getirir.", "Tembellikten kaçınmalıyız.",
+            "Zamanı iyi kullanmalıyız.", "Planlı çalışmak önemlidir.", "Hedeflerimize ulaşmak için çabalamalıyız.",
+            "Hayallerimizin peşinden gitmeliyiz.", "Asla pes etmemeliyiz.", "Hatalarımızdan ders çıkarmalıyız.",
+            "Başarısızlık başarının anahtarıdır.", "Öğrenmenin yaşı yoktur.", "Her gün yeni bir şeyler öğrenmeliyiz.",
+            "Kitaplar en iyi dostumuzdur.", "Bilgi güçtür.", "Cahillik mutluluk değildir.", "Saygı görmek istiyorsan saygı göster.",
+            "Sevgi paylaştıkça çoğalır.", "Gülümsemek sadakadır.", "İyilik yap denize at.", "Damlaya damlaya göl olur.",
+            "Sakla samanı gelir zamanı.", "Ayağını yorganına göre uzat.", "Üzüm üzüme baka baka kararır.",
+            "Komşu komşunun külüne muhtaçtır.", "Bir elin nesi var iki elin sesi var.", "Birlikten kuvvet doğar.",
+            "Yalnız taş duvar olmaz.", "Ağaç yaşken eğilir.", "Demir tavında dövülür.", "İşleyen demir ışıldar.",
+            "Emek olmadan yemek olmaz.", "Zahmetsiz rahmet olmaz.", "Sabır acıdır meyvesi tatlıdır.",
+            "Acele işe şeytan karışır.", "Öfkeyle kalkan zararla oturur.", "Keskin sirke küpüne zarar.",
+            "Tatlı dil yılanı deliğinden çıkarır.", "Söz gümüşse sükut altındır.", "Doğru söyleyeni dokuz köyden kovarlar.",
+            "Yalancının mumu yatsıya kadar yanar.", "Güneş girmeyen eve doktor girer.", "Sağlam kafa sağlam vücutta bulunur.",
+            "Erken kalkan yol alır.", "Vakit nakittir.", "Bugünün işini yarına bırakma.", "Tasarruf etmek önemlidir.",
+            "İsraftan kaçınmalıyız.", "Suyu boşa harcamamalıyız.", "Elektriği gereksiz yere kullanmamalıyız.",
+            "Geri dönüşüme önem vermeliyiz.", "Çevremizi temiz tutmalıyız.", "Ağaç dikmeliyiz.", "Ormanları korumalıyız.",
+            "Denizleri kirletmemeliyiz.", "Dünyamız bizim evimizdir.", "Barış içinde yaşamalıyız.", "Savaşlara hayır demeliyiz.",
+            "Çocuklar geleceğimizdir.", "Eğitim her çocuğun hakkıdır.", "Adalet mülkün temelidir.", "Hukukun üstünlüğüne inanmalıyız.",
+            "Demokrasiye sahip çıkmalıyız.", "Özgürlük en büyük değerdir.", "İnsan haklarına saygı duymalıyız.",
+            "Herkes eşittir.", "Ayrımcılık yapmamalıyız.", "Farklılıklara hoşgörülü olmalıyız.", "Empati kurmalıyız.",
+            "Birbirimizi anlamaya çalışmalıyız.", "İletişim kurmak önemlidir.", "Dinlemeyi bilmeliyiz.",
+            "Konuşurken nazik olmalıyız.", "Teşekkür etmeyi unutmamalıyız.", "Özür dilemek erdemdir.", "Affetmek büyüklüktür."
         ];
         const EMOJI_POOL = ['🍎', '🍌', '🍒', '🍕', '🚀', '🐱', '🐶', '⚽', '🚗', '⭐', '🎈', '🎉'];
         const ALPHABET = "ABCÇDEFGĞHİIJKLMNOÖPRSŞTUÜVYZ";
@@ -250,7 +273,7 @@
             const [texts, setTexts] = useState([]); 
             const [isLoading, setIsLoading] = useState(false);
             
-            // Havuzlar ve Ayarlar
+            // Ayarlar
             const [wordPool, setWordPool] = useState(DEFAULT_WORD_POOL);
             const [sentencePool, setSentencePool] = useState(DEFAULT_SENTENCE_POOL);
             const [exerciseSettings, setExerciseSettings] = useState({});
@@ -359,8 +382,9 @@
                             <div className="z-10 bg-white/20 p-6 rounded-full mb-6 backdrop-blur-sm">
                                 <Zap size={64} className="text-yellow-300" />
                             </div>
-                            <h1 className="text-3xl font-bold mb-2 z-10">Hızlı Okuma Pro</h1>
+                            <h1 className="text-3xl font-bold mb-2 z-10">Hızlı Okuma</h1>
                             <p className="text-indigo-200 z-10">Öğrenci Takip ve Gelişim Sistemi</p>
+                            <p className="text-indigo-300 text-sm z-10 mt-1">arfsmtbl</p>
                         </div>
 
                         <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col relative">
