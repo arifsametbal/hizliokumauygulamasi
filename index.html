@@ -40,7 +40,75 @@
         const RechartsObj = window.Recharts || {};
         const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } = RechartsObj;
 
-        // --- SafeChart Tanımlaması ---
+        // --- YARDIMCI FONKSİYONLAR (GLOBAL) ---
+        const generateRandomNumber = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
+        const randomizeCase = (w) => Math.random() > 0.5 ? w.charAt(0).toLowerCase() + w.slice(1) : w.charAt(0).toUpperCase() + w.slice(1);
+        const createTypo = (w) => (w && w.length > 0 ? w + 'x' : 'hatax');
+
+        // --- SABİT VERİLER (GLOBAL) ---
+        const INITIAL_TEXTS = [
+          {
+            id: 1,
+            title: "Karga ile Su Testisi",
+            content: "Çok susamış bir karga, azıcık su bulunan bir testi buldu. Fakat testinin ağzı dar olduğundan gagasını uzatıp suyu içemedi. Karga düşündü, taşındı ve aklına bir fikir geldi. Yerden küçük çakıl taşlarını toplayıp testinin içine atmaya başladı. Taşlar doldukça su yükseldi. Sonunda su, karganın içebileceği seviyeye geldi ve karga kana kana su içti.",
+            level: 1,
+            questions: [
+              { q: "Karga suyu neden içemedi?", options: ["Su çok sıcaktı", "Testinin ağzı dardı", "Suyu sevmedi", "Gagası kırıldı"], answer: 1 },
+              { q: "Karganın aklına nasıl bir fikir geldi?", options: ["Testiyi kırmak", "Başkasına yardım istemek", "İçine taş atmak", "Yağmur yağmasını beklemek"], answer: 2 },
+              { q: "Taşlar atılınca suya ne oldu?", options: ["Su kirlendi", "Su döküldü", "Su buharlaştı", "Su yükseldi"], answer: 3 },
+              { q: "Hikayenin ana fikri nedir?", options: ["Kaba kuvvet her şeyi çözer", "Zeka ve sabırla zorluklar aşılır", "Kargalar suyu sever", "Testiler dar ağızlı olmamalıdır"], answer: 1 },
+              { q: "Karga başlangıçta ne durumdaydı?", options: ["Çok açtı", "Çok uykusuzdu", "Çok susamıştı", "Çok yorgundu"], answer: 2 }
+            ]
+          },
+          { id: 2, title: "Aslan ile Fare", content: "Ormanlar kralı aslan bir gün uyurken, minik bir fare onun üzerinde dolaşmaya başlamış. Aslan uyanıp fareyi yakalamış. Fare yalvarmış: 'Bırak beni, gün olur sana iyiliğim dokunur.' Aslan gülmüş ama fareyi bırakmış. Günler sonra aslan avcıların tuzağına düşmüş. Kükremesini duyan fare gelmiş, ipleri kemirerek aslanı kurtarmış. Aslan, küçük bir farenin bile büyük işler yapabileceğini anlamış.", level: 2, questions: [{q: "Fare aslanı nasıl kurtardı?", options: ["Avcıları korkutarak", "İpleri kemirerek", "Diğer hayvanları çağırarak", "Anahtarı bularak"], answer: 1}] },
+          { id: 3, title: "Tilki ile Üzüm", content: "Bir tilki, karnı aç bir şekilde ormanda dolaşıyordu. Başını yukarı kaldırdığında, bir asmadan sarkan nefis üzüm salkımları gördü. Üzümler olgundu ve iştah açıcı görünüyordu. Tilki zıpladı ama yetişemedi. Bir daha denedi, yine olmadı. Defalarca zıplamasına rağmen üzümlere ulaşamadı. Sonunda yorgun düşen tilki, 'Zaten bu üzümler korukmuş, yenmezmiş' diyerek oradan uzaklaştı.", level: 3, questions: [{q: "Tilki üzümlere ulaşamayınca ne dedi?", options: ["Çok lezzetliymiş", "Zaten korukmuş", "Yarın gelirim", "Boyum yetmedi"], answer: 1}] },
+          { id: 4, title: "Tavşan ile Kaplumbağa", content: "Tavşan, hızıyla övünmeyi çok severdi. Kaplumbağa ise yavaşlığıyla bilinirdi. Bir gün yarışmaya karar verdiler. Yarış başladı, tavşan ok gibi fırladı. Yarı yola gelince 'Nasılsa kaplumbağa çok geride, şurada biraz uyuyayım' dedi. Kaplumbağa ise hiç durmadan, yavaş ama kararlı adımlarla yürüdü. Tavşan uyandığında bir de baktı ki kaplumbağa bitiş çizgisine varmış. Yarışı kazanan, azimle devam eden kaplumbağa oldu.", level: 4, questions: [{q: "Yarışı kim kazandı?", options: ["Tavşan", "Kaplumbağa", "Tilki", "Hakem"], answer: 1}] },
+          { id: 5, title: "Ağustos Böceği ile Karınca", content: "Yaz boyunca Ağustos böceği saz çaldı, şarkı söyledi ve eğlendi. Karınca ise hiç durmadan çalıştı, kış için yuvasına yiyecek taşıdı. Ağustos böceği karıncaya gülüp, 'Bu güzel havanın tadını çıkarsana' dedi. Karınca, 'Kış gelince aç kalmamak için çalışmalıyım' diye cevap verdi. Günler geçti, havalar soğudu ve kış geldi. Her yer karla kaplandı. Ağustos böceği yiyecek bulamadı ve aç kaldı. Titreyerek karıncanın kapısını çaldı. Karınca ise sıcacık yuvasında rahattı. Ağustos böceği hatasını anladı ama iş işten geçmişti.", level: 5, questions: [{q: "Karınca ne yaptı?", options: ["Yattı", "Çalıştı", "Gezdi", "Uyudu"], answer: 1}] },
+          { id: 6, title: "Rüzgar ile Güneş", content: "Bir gün rüzgar ile güneş, hangisinin daha güçlü olduğu konusunda tartışmaya başladılar. O sırada yolda kalın bir palto giymiş bir adam yürüyordu. Rüzgar, 'Ben o adamın paltosunu çıkarırım' dedi ve tüm gücüyle esmeye başladı. Fırtına gibi esti ama o estikçe adam paltosuna daha sıkı sarıldı. Rüzgar yoruldu ve pes etti. Sıra güneşe geldi. Güneş bulutların arkasından çıktı ve nazikçe parlamaya başladı. Hava ısındıkça adam terledi. Önce düğmelerini açtı, sonra sıcak dayanılamaz hale gelince paltosunu çıkarıp koluna aldı. Güneş, nezaketin kaba kuvvetten daha etkili olduğunu kanıtladı.", level: 6, questions: [{q: "Yarışmayı kim kazandı?", options: ["Rüzgar", "Adam", "Güneş", "Bulut"], answer: 2}] },
+          { id: 7, title: "Altın Yumurtlayan Tavuk", content: "Bir zamanlar fakir bir köylünün bir tavuğu vardı. Bu tavuk, diğerlerinden farklıydı çünkü her gün bir tane altın yumurta yumurtluyordu. Köylü bu yumurtaları satarak kısa sürede zengin oldu. Ancak köylü çok açgözlüydü. Her gün sadece bir yumurta almak ona yetmiyordu. 'Tavuğun içinde hazine olmalı, hepsini birden almalıyım' diye düşündü. Bir gün dayanamayıp tavuğu kesti. Fakat tavuğun içi diğer tavuklardan farksızdı. Ne hazine vardı ne de altın. Açgözlü köylü, elindeki değerli tavuğu da kaybetmiş oldu ve eski fakir günlerine geri döndü.", level: 7, questions: [{q: "Köylü tavuğu neden kesti?", options: ["Yemek için", "Hasta olduğu için", "Altınları almak için", "Yaşlandığı için"], answer: 2}] },
+          { id: 8, title: "Yalancı Çoban", content: "Köyün birinde koyunları otlatan bir çoban varmış. Canı sıkılan çoban, köylülere şaka yapmak istemiş. Köye doğru koşarak 'Kurt var! Kurt saldırıyor!' diye bağırmış. Köylüler işlerini bırakıp yardıma koşmuşlar ama ortada kurt falan yokmuş. Çoban gülerek 'Şaka yaptım' demiş. Köylüler kızmış ama geri dönmüşler. Birkaç gün sonra çoban aynı şakayı tekrar yapmış. Köylüler yine yardıma gelmiş, yine kandırıldıklarını anlamışlar. Günlerden bir gün, gerçekten sürüye bir kurt saldırmış. Çoban korkuyla 'Kurt var! Yardım edin!' diye bağırmış. Ancak köylüler, çobanın yine yalan söylediğini düşünerek yardıma gitmemişler. Kurt, sürüdeki koyunları kapmış. Çoban, yalancılığının bedelini ağır ödemiş.", level: 8, questions: [{q: "Köylüler son seferde neden yardıma gelmedi?", options: ["Duymadılar", "İnanmadılar", "Korktular", "Meşguldüler"], answer: 1}] },
+          { id: 9, title: "Şehir Faresi ile Tarla Faresi", content: "Bir gün şehir faresi, uzaktan akrabası olan tarla faresini ziyarete gitmiş. Tarla faresi misafirine buğday, kökler ve mısır ikram etmiş. Şehir faresi, 'Sen burada çok fakir yaşıyorsun, gel benimle şehre gidelim, orada krallar gibi yaşarız' demiş. Birlikte şehre, büyük bir konağa gitmişler. Sofrada peynirler, pastalar, etler varmış. Tam yemeye başlayacaklarken kapı açılmış, içeri insanlar girmiş. Fareler korkuyla deliğe kaçmış. Saklandıkları yerde titrerken evin kedisi gelmiş, onları kovalamış. Tarla faresi korkudan nefes nefese kalmış. 'Benim evimde yiyecekler az ama huzurum var' demiş. 'Senin sofraların zengin ama korku içinde yaşıyorsun. Ben fakir ama özgür hayatımı tercih ederim.' diyerek tarlasına geri dönmüş.", level: 9, questions: [{q: "Tarla faresi neden geri döndü?", options: ["Yemeği beğenmedi", "Korku içinde yaşamak istemedi", "Yolu unuttu", "Köyünü özledi"], answer: 1}] },
+          { id: 10, title: "Keloğlan ve Sihirli Kuş", content: "Bir varmış, bir yokmuş. Evvel zaman içinde, kalbur saman içinde, uzak diyarların birinde Keloğlan ile yaşlı annesi yaşarmış. Fakirlik bellerini bükmüş, yiyecek bir lokma ekmekleri kalmamış. Keloğlan bir gün ormana odun toplamaya gitmiş. Ormanın derinliklerinde, tüyleri gökkuşağı gibi parlayan, kanatları altından daha parlak, eşi benzeri görülmemiş bir kuş görmüş. Kuşun ayağı bir çalıya takılmış, çırpınıp duruyormuş. Keloğlan'ın yüreği el vermemiş, hemen koşup kuşu kurtarmış. Kuş dile gelmiş: 'Ey iyi kalpli Keloğlan! Sen beni kurtardın, ben de sana bir iyilik yapacağım. Al bu tüyümü, ne zaman başın sıkışırsa bu tüyü yak, ben hemen gelirim.' demiş ve uçup gitmiş.", level: 10, questions: [{q: "Kuş, Keloğlan'a ne verdi?", options: ["Bir altın", "Bir tüy", "Bir elma", "Bir harita"], answer: 1}] }
+        ];
+
+        const EXERCISE_TYPES = [
+          { id: 'kelime_avi', title: 'Kelime Avı', category: 'Dikkat', type: 'grid' },
+          { id: 'farkli_kelime', title: 'Farklı Kelime Çifti', category: 'Dikkat', type: 'grid_diff' }, 
+          { id: 'cift_tek', title: 'Çift/Tek Sayı', category: 'Matematik', type: 'math_logic' }, 
+          { id: 'aranan_sayi', title: 'Aranan Sayıyı Bul', category: 'Dikkat', type: 'search_num' }, 
+          { id: 'istenen_harf', title: 'İstenen Harfleri Bul', category: 'Dikkat', type: 'search_letter' },
+          { id: 'goster_kelime', title: 'Kelimeyi Hatırla', category: 'Hafıza', type: 'flash_memory' },
+          { id: 'karisik_kelime', title: 'Karışık Kelime Bul', category: 'Kelime', type: 'scramble_word' },
+          { id: 'goster_cumle', title: 'Cümleyi Hatırla', category: 'Hafıza', type: 'flash_sentence' },
+          { id: 'goz_takibi', title: 'Göz Takibi (Emoji Sayma)', category: 'Göz Kası', type: 'eye_track_count' },
+          { id: 'takistoskop', title: 'Takistoskopik Okuma', category: 'Okuma', type: 'tachistoscope_text' },
+        ];
+
+        const DEFAULT_WORD_POOL = [
+            "Araba", "Bebek", "Ceviz", "Davul", "Elma", "Fıstık", "Gemi", "Halı", "Işık", "Jeton",
+            "Kalem", "Limon", "Masa", "Nar", "Okul", "Para", "Radyo", "Saat", "Top", "Uçak",
+            "Vazo", "Yol", "Zil", "Ağaç", "Balık", "Cam", "Deniz", "Ev", "Fare", "Göz",
+            "Hava", "İp", "Jilet", "Kedi", "Lale", "Muz", "Nehir", "Orman", "Peynir", "Resim",
+            "Süt", "Tuz", "Un", "Vapur", "Yağmur", "Zeytin", "Ay", "Bıçak", "Ceket", "Dere",
+            "Ekmek", "Fırça", "Güneş", "Halat", "İğne", "Jandarma", "Kağıt", "Lamba", "Makas", "Nane",
+            "Oda", "Pil", "Renk", "Silgi", "Tarak", "Uyku", "Vadi", "Yastık", "Zarf", "Akıl",
+            "Beyin", "Cesur", "Dürüst", "Eski", "Fakir", "Güzel", "Hızlı", "İyi", "Japon", "Kısa",
+            "Lazım", "Mutlu", "Nadir", "Orta", "Pahalı", "Rahat", "Sıcak", "Temiz", "Uzun", "Var",
+            "Yok", "Zengin", "Açık", "Boş", "Ciddi", "Dolu", "Erken", "Geç", "Hafif", "İnce"
+        ];
+        const DEFAULT_SENTENCE_POOL = [
+            "Bugün hava çok güzel.", "Yarın sinemaya gideceğiz.", "Kitap okumayı çok seviyorum.",
+            "Annem lezzetli yemekler yapar.", "Babam işten geç geldi.", "Kardeşimle parkta oyun oynadık.",
+            "Okulda yeni arkadaşlar edindim.", "Ödevlerimi zamanında bitirdim.", "Akşam yemeğinde tavuk yedik.",
+            "Sabah erkenden kalktım.", "Dişlerimi günde iki kez fırçalarım.", "Ellerimizi sık sık yıkamalıyız.",
+            "Sağlıklı beslenmek önemlidir.", "Spor yapmak vücuda iyi gelir.", "Müzik dinlemek beni rahatlatır.",
+            "Resim yapmayı öğrenmek istiyorum.", "Yaz tatilinde denize gireceğim.", "Kışın kardan adam yaparız."
+        ];
+        const EMOJI_POOL = ['🍎', '🍌', '🍒', '🍕', '🚀', '🐱', '🐶', '⚽', '🚗', '⭐', '🎈', '🎉'];
+        const ALPHABET = "ABCÇDEFGĞHİIJKLMNOÖPRSŞTUÜVYZ";
+
+        // --- SafeChart Bileşeni ---
         const SafeChart = ({ data, color = "#4f46e5" }) => {
             if (!RechartsObj.LineChart) return <div>Grafik Yükleniyor...</div>;
             if (!data || data.length === 0) return <div className="flex h-full items-center justify-center text-gray-400 text-sm">Veri yok</div>;
@@ -126,7 +194,7 @@
             }
         };
 
-        // --- İKONLAR ---
+        // --- İKONLAR (GLOBAL) ---
         const IconBase = ({ children, ...props }) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg> );
         const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></IconBase>;
         const BookOpen = (props) => <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></IconBase>;
@@ -150,270 +218,6 @@
         const FileText = (props) => <IconBase {...props}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></IconBase>;
         const Cloud = (props) => <IconBase {...props}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></IconBase>;
         const List = (props) => <IconBase {...props}><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></IconBase>;
-
-        // --- VERİ VE SABİTLER ---
-        const INITIAL_TEXTS = [
-          {
-            id: 1,
-            title: "Karga ile Su Testisi",
-            content: "Çok susamış bir karga, azıcık su bulunan bir testi buldu. Fakat testinin ağzı dar olduğundan gagasını uzatıp suyu içemedi. Karga düşündü, taşındı ve aklına bir fikir geldi. Yerden küçük çakıl taşlarını toplayıp testinin içine atmaya başladı. Taşlar doldukça su yükseldi. Sonunda su, karganın içebileceği seviyeye geldi ve karga kana kana su içti.",
-            level: 1,
-            questions: [
-              { q: "Karga suyu neden içemedi?", options: ["Su çok sıcaktı", "Testinin ağzı dardı", "Suyu sevmedi", "Gagası kırıldı"], answer: 1 },
-              { q: "Karganın aklına nasıl bir fikir geldi?", options: ["Testiyi kırmak", "Başkasına yardım istemek", "İçine taş atmak", "Yağmur yağmasını beklemek"], answer: 2 },
-              { q: "Taşlar atılınca suya ne oldu?", options: ["Su kirlendi", "Su döküldü", "Su buharlaştı", "Su yükseldi"], answer: 3 },
-              { q: "Hikayenin ana fikri nedir?", options: ["Kaba kuvvet her şeyi çözer", "Zeka ve sabırla zorluklar aşılır", "Kargalar suyu sever", "Testiler dar ağızlı olmamalıdır"], answer: 1 },
-              { q: "Karga başlangıçta ne durumdaydı?", options: ["Çok açtı", "Çok uykusuzdu", "Çok susamıştı", "Çok yorgundu"], answer: 2 }
-            ]
-          },
-          {
-            id: 2,
-            title: "Aslan ile Fare",
-            content: "Ormanlar kralı aslan bir gün uyurken, minik bir fare onun üzerinde dolaşmaya başlamış. Aslan uyanıp fareyi yakalamış. Fare yalvarmış: 'Bırak beni, gün olur sana iyiliğim dokunur.' Aslan gülmüş ama fareyi bırakmış. Günler sonra aslan avcıların tuzağına düşmüş. Kükremesini duyan fare gelmiş, ipleri kemirerek aslanı kurtarmış. Aslan, küçük bir farenin bile büyük işler yapabileceğini anlamış.",
-            level: 2,
-            questions: [
-              { q: "Fare aslanı nasıl kurtardı?", options: ["Avcıları korkutarak", "İpleri kemirerek", "Diğer hayvanları çağırarak", "Anahtarı bularak"], answer: 1 },
-              { q: "Aslan fareyi ilk yakaladığında ne yaptı?", options: ["Onu yedi", "Hapse attı", "Serbest bıraktı", "Kükredi"], answer: 2 },
-              { q: "Aslan neyin tuzağına düştü?", options: ["Bir çukurun", "Avcıların ağının", "Başka bir aslanın", "Kocaman bir kafesin"], answer: 1 },
-              { q: "Farenin aslana verdiği ders nedir?", options: ["Küçükler de büyük işler başarabilir", "Aslanlar ormanın kralıdır", "Fareler çok hızlı koşar", "Uyumak tehlikelidir"], answer: 0 },
-              { q: "Fare aslanın üzerinde ne yapıyordu?", options: ["Uyuyordu", "Dolaşıyordu", "Yemek yiyordu", "Saklanıyordu"], answer: 1 }
-            ]
-          },
-          {
-            id: 3,
-            title: "Tilki ile Üzüm",
-            content: "Bir tilki, karnı aç bir şekilde ormanda dolaşıyordu. Başını yukarı kaldırdığında, bir asmadan sarkan nefis üzüm salkımları gördü. Üzümler olgundu ve iştah açıcı görünüyordu. Tilki zıpladı ama yetişemedi. Bir daha denedi, yine olmadı. Defalarca zıplamasına rağmen üzümlere ulaşamadı. Sonunda yorgun düşen tilki, 'Zaten bu üzümler korukmuş, yenmezmiş' diyerek oradan uzaklaştı.",
-            level: 3,
-            questions: [
-              { q: "Tilki üzümlere ulaşamayınca ne dedi?", options: ["Çok lezzetliymiş", "Zaten korukmuş", "Yarın gelirim", "Boyum yetmedi"], answer: 1 },
-              { q: "Tilki neden üzümlere ulaşmak istedi?", options: ["Susadığı için", "Oyun oynamak için", "Karnı aç olduğu için", "Merak ettiği için"], answer: 2 },
-              { q: "Tilki üzümleri almak için ne yaptı?", options: ["Ağaca tırmandı", "Merdiven kullandı", "Taş attı", "Zıpladı"], answer: 3 },
-              { q: "Hikayedeki 'koruk' ne anlama gelir?", options: ["Olgunlaşmamış ekşi üzüm", "Çürümüş meyve", "Kuru dal", "Tatlı meyve"], answer: 0 },
-              { q: "Tilki neden vazgeçti?", options: ["Üzümleri beğenmedi", "Bir avcı gördü", "Yorgun düştü ve ulaşamadı", "Karnı doydu"], answer: 2 }
-            ]
-          },
-          {
-            id: 4,
-            title: "Tavşan ile Kaplumbağa",
-            content: "Tavşan, hızıyla övünmeyi çok severdi. Kaplumbağa ise yavaşlığıyla bilinirdi. Bir gün yarışmaya karar verdiler. Yarış başladı, tavşan ok gibi fırladı. Yarı yola gelince 'Nasılsa kaplumbağa çok geride, şurada biraz uyuyayım' dedi. Kaplumbağa ise hiç durmadan, yavaş ama kararlı adımlarla yürüdü. Tavşan uyandığında bir de baktı ki kaplumbağa bitiş çizgisine varmış. Yarışı kazanan, azimle devam eden kaplumbağa oldu.",
-            level: 4,
-            questions: [
-              { q: "Yarışı kim kazandı?", options: ["Tavşan", "Kaplumbağa", "Tilki", "Hakem"], answer: 1 },
-              { q: "Tavşan yarış sırasında ne yaptı?", options: ["Yemek yedi", "Su içti", "Uyudu", "Kitap okudu"], answer: 2 },
-              { q: "Kaplumbağanın yarışı kazanmasını sağlayan özelliği neydi?", options: ["Hızlı olması", "Kurnaz olması", "Kararlı ve azimli olması", "Şanslı olması"], answer: 2 },
-              { q: "Tavşan neyi ile övünürdü?", options: ["Zekasıyla", "Hızıyla", "Kulaklarıyla", "Tüyleriyle"], answer: 1 },
-              { q: "Tavşan uyandığında ne gördü?", options: ["Akşam olduğunu", "Kaplumbağanın bitişe vardığını", "Yarışın iptal edildiğini", "Yağmur yağdığını"], answer: 1 }
-            ]
-          },
-          {
-            id: 5,
-            title: "Ağustos Böceği ile Karınca",
-            content: "Yaz boyunca Ağustos böceği saz çaldı, şarkı söyledi ve eğlendi. Karınca ise hiç durmadan çalıştı, kış için yuvasına yiyecek taşıdı. Ağustos böceği karıncaya gülüp, 'Bu güzel havanın tadını çıkarsana' dedi. Karınca, 'Kış gelince aç kalmamak için çalışmalıyım' diye cevap verdi. Günler geçti, havalar soğudu ve kış geldi. Her yer karla kaplandı. Ağustos böceği yiyecek bulamadı ve aç kaldı. Titreyerek karıncanın kapısını çaldı. Karınca ise sıcacık yuvasında rahattı. Ağustos böceği hatasını anladı ama iş işten geçmişti.",
-            level: 5,
-            questions: [
-              { q: "Karınca yaz boyunca ne yaptı?", options: ["Şarkı söyledi", "Uyudu", "Yiyecek topladı", "Tatile gitti"], answer: 2 },
-              { q: "Ağustos böceği yazın ne yaptı?", options: ["Çalıştı", "Saz çalıp eğlendi", "Ev inşa etti", "Kitap okudu"], answer: 1 },
-              { q: "Ağustos böceği kışın neden zor durumda kaldı?", options: ["Evi yıkıldığı için", "Hastalandığı için", "Hazırlık yapmadığı için", "Kaybolduğu için"], answer: 2 },
-              { q: "Karınca Ağustos böceğine ne demişti?", options: ["Benimle oyna", "Kış gelince aç kalmamak için çalışmalıyım", "Müziği çok severim", "Yarın çalışırız"], answer: 1 },
-              { q: "Hikayenin ana dersi nedir?", options: ["Müzik ruhun gıdasıdır", "Geleceği düşünerek çalışmak gerekir", "Yazın tatil yapılmalıdır", "Böcekler kışın uyur"], answer: 1 }
-            ]
-          },
-          {
-            id: 6,
-            title: "Rüzgar ile Güneş",
-            content: "Bir gün rüzgar ile güneş, hangisinin daha güçlü olduğu konusunda tartışmaya başladılar. O sırada yolda kalın bir palto giymiş bir adam yürüyordu. Rüzgar, 'Ben o adamın paltosunu çıkarırım' dedi ve tüm gücüyle esmeye başladı. Fırtına gibi esti ama o estikçe adam paltosuna daha sıkı sarıldı. Rüzgar yoruldu ve pes etti. Sıra güneşe geldi. Güneş bulutların arkasından çıktı ve nazikçe parlamaya başladı. Hava ısındıkça adam terledi. Önce düğmelerini açtı, sonra sıcak dayanılamaz hale gelince paltosunu çıkarıp koluna aldı. Güneş, nezaketin kaba kuvvetten daha etkili olduğunu kanıtladı.",
-            level: 6,
-            questions: [
-              { q: "Adam paltosunu neden çıkardı?", options: ["Rüzgar estiği için", "Hava ısındığı için", "Paltosu yırtıldığı için", "Yağmur yağdığı için"], answer: 1 },
-              { q: "Rüzgar estikçe adam ne yaptı?", options: ["Paltosunu çıkardı", "Paltosuna daha sıkı sarıldı", "Koşmaya başladı", "Şapkasını taktı"], answer: 1 },
-              { q: "Yarışmayı kim kazandı?", options: ["Rüzgar", "Adam", "Güneş", "Bulut"], answer: 2 },
-              { q: "Güneş adamın paltosunu çıkarması için ne yaptı?", options: ["Üfledi", "Nazikçe parladı ve havayı ısıttı", "Yağmur yağdırdı", "Konuştu"], answer: 1 },
-              { q: "Bu hikaye bize neyi öğretir?", options: ["Kışın kalın giyinmeyi", "Rüzgarın çok güçlü olduğunu", "Nezaketin kaba kuvvetten etkili olduğunu", "Güneşli havaları"], answer: 2 }
-            ]
-          },
-          {
-            id: 7,
-            title: "Altın Yumurtlayan Tavuk",
-            content: "Bir zamanlar fakir bir köylünün bir tavuğu vardı. Bu tavuk, diğerlerinden farklıydı çünkü her gün bir tane altın yumurta yumurtluyordu. Köylü bu yumurtaları satarak kısa sürede zengin oldu. Ancak köylü çok açgözlüydü. Her gün sadece bir yumurta almak ona yetmiyordu. 'Tavuğun içinde hazine olmalı, hepsini birden almalıyım' diye düşündü. Bir gün dayanamayıp tavuğu kesti. Fakat tavuğun içi diğer tavuklardan farksızdı. Ne hazine vardı ne de altın. Açgözlü köylü, elindeki değerli tavuğu da kaybetmiş oldu ve eski fakir günlerine geri döndü.",
-            level: 7,
-            questions: [
-              { q: "Köylü tavuğu neden kesti?", options: ["Yemek için", "Hasta olduğu için", "İçindeki tüm altınları almak için", "Yaşlandığı için"], answer: 2 },
-              { q: "Tavuğun özelliği neydi?", options: ["Çok büyük olması", "Konuşabilmesi", "Altın yumurtlaması", "Mavi renkli olması"], answer: 2 },
-              { q: "Köylü tavuğu kesince ne buldu?", options: ["Büyük bir elmas", "Hiçbir şey, içi normaldi", "Bir kese altın", "Gümüş yumurta"], answer: 1 },
-              { q: "Köylünün hatası neydi?", options: ["Tembellik", "Korkaklık", "Açgözlülük", "Yalancılık"], answer: 2 },
-              { q: "Hikayenin sonunda köylüye ne oldu?", options: ["Daha zengin oldu", "Eski fakir günlerine döndü", "Yeni bir tavuk aldı", "Şehre taşındı"], answer: 1 }
-            ]
-          },
-          {
-            id: 8,
-            title: "Yalancı Çoban",
-            content: "Köyün birinde koyunları otlatan bir çoban varmış. Canı sıkılan çoban, köylülere şaka yapmak istemiş. Köye doğru koşarak 'Kurt var! Kurt saldırıyor!' diye bağırmış. Köylüler işlerini bırakıp yardıma koşmuşlar ama ortada kurt falan yokmuş. Çoban gülerek 'Şaka yaptım' demiş. Köylüler kızmış ama geri dönmüşler. Birkaç gün sonra çoban aynı şakayı tekrar yapmış. Köylüler yine yardıma gelmiş, yine kandırıldıklarını anlamışlar. Günlerden bir gün, gerçekten sürüye bir kurt saldırmış. Çoban korkuyla 'Kurt var! Yardım edin!' diye bağırmış. Ancak köylüler, çobanın yine yalan söylediğini düşünerek yardıma gitmemişler. Kurt, sürüdeki koyunları kapmış. Çoban, yalancılığının bedelini ağır ödemiş.",
-            level: 8,
-            questions: [
-              { q: "Köylüler son seferde neden yardıma gelmedi?", options: ["Duymadılar", "Çobana inanmadılar", "Korktular", "Meşguldüler"], answer: 1 },
-              { q: "Çoban başlangıçta neden yalan söyledi?", options: ["Korktuğu için", "Canı sıkıldığı ve şaka yapmak için", "Rüya gördüğü için", "Koyunları kaybettiği için"], answer: 1 },
-              { q: "Köylüler çobanın şaka yaptığını öğrenince ne hissettiler?", options: ["Mutlu oldular", "Güldüler", "Kızdılar", "Umursamadılar"], answer: 2 },
-              { q: "Gerçek kurt geldiğinde ne oldu?", options: ["Çoban kurdu kovaladı", "Köylüler hemen geldi", "Kurt koyunları kaptı", "Köpekler kurdu yakaladı"], answer: 2 },
-              { q: "Bu hikayeden çıkarılacak ders nedir?", options: ["Sürekli yalan söyleyen birine doğru söylese bile inanılmaz", "Çobanlık zor bir meslektir", "Kurtlar tehlikelidir", "Şaka yapmak eğlencelidir"], answer: 0 }
-            ]
-          },
-          {
-            id: 9,
-            title: "Şehir Faresi ile Tarla Faresi",
-            content: "Bir gün şehir faresi, uzaktan akrabası olan tarla faresini ziyarete gitmiş. Tarla faresi misafirine buğday, kökler ve mısır ikram etmiş. Şehir faresi, 'Sen burada çok fakir yaşıyorsun, gel benimle şehre gidelim, orada krallar gibi yaşarız' demiş. Birlikte şehre, büyük bir konağa gitmişler. Sofrada peynirler, pastalar, etler varmış. Tam yemeye başlayacaklarken kapı açılmış, içeri insanlar girmiş. Fareler korkuyla deliğe kaçmış. Saklandıkları yerde titrerken evin kedisi gelmiş, onları kovalamış. Tarla faresi korkudan nefes nefese kalmış. 'Benim evimde yiyecekler az ama huzurum var' demiş. 'Senin sofraların zengin ama korku içinde yaşıyorsun. Ben fakir ama özgür hayatımı tercih ederim.' diyerek tarlasına geri dönmüş.",
-            level: 9,
-            questions: [
-              { q: "Tarla faresi neden geri döndü?", options: ["Yemeği beğenmediği için", "Şehirde korku içinde yaşadığı için", "Yolu unuttuğu için", "Köyünü özlediği için"], answer: 1 },
-              { q: "Şehir faresi tarla faresine ne teklif etti?", options: ["Tarlada kalmayı", "Şehre gelip zengin yaşamayı", "Ormanda yaşamayı", "Başka bir ülkeye gitmeyi"], answer: 1 },
-              { q: "Şehirdeki evde fareleri ne korkuttu?", options: ["Sadece insanlar", "Sadece kedi", "İnsanlar ve evin kedisi", "Diğer fareler"], answer: 2 },
-              { q: "Tarla faresi misafirine ne ikram etti?", options: ["Peynir ve et", "Pasta ve börek", "Buğday ve mısır", "Bal ve kaymak"], answer: 2 },
-              { q: "Hikayenin ana fikri nedir?", options: ["Zenginlik her şeyden önemlidir", "Şehir hayatı çok eğlencelidir", "Korkulu zenginliktense huzurlu fakirlik iyidir", "Fareler peynir sever"], answer: 2 }
-            ]
-          },
-          {
-            id: 10,
-            title: "Keloğlan ve Sihirli Kuş",
-            content: "Bir varmış, bir yokmuş. Evvel zaman içinde, kalbur saman içinde, uzak diyarların birinde Keloğlan ile yaşlı annesi yaşarmış. Fakirlik bellerini bükmüş, yiyecek bir lokma ekmekleri kalmamış. Keloğlan bir gün ormana odun toplamaya gitmiş. Ormanın derinliklerinde, tüyleri gökkuşağı gibi parlayan, kanatları altından daha parlak, eşi benzeri görülmemiş bir kuş görmüş. Kuşun ayağı bir çalıya takılmış, çırpınıp duruyormuş. Keloğlan'ın yüreği el vermemiş, hemen koşup kuşu kurtarmış. Kuş dile gelmiş: 'Ey iyi kalpli Keloğlan! Sen beni kurtardın, ben de sana bir iyilik yapacağım. Al bu tüyümü, ne zaman başın sıkışırsa bu tüyü yak, ben hemen gelirim.' demiş ve uçup gitmiş.\n\nGünler geçmiş, padişahın kızı amansız bir hastalığa yakalanmış. Ülkenin tüm hekimleri gelmiş ama çare bulamamışlar. Padişah, kızını iyileştirene ağırlığınca altın vereceğini duyurmuş. Keloğlan bunu duyunca aklına sihirli kuş gelmiş. Hemen tüyü yakmış. Anında gökkuşağı renkli kuş belirmiş. Keloğlan durumu anlatmış. Kuş, 'Kaf dağının ardında Zümrüdüanka kuşunun gözyaşıyla sulanan bir çiçek vardır. O çiçeği getirirsen prenses iyileşir' demiş ve Keloğlan'ı sırtına alıp Kaf dağına uçurmuş.\n\nKeloğlan zorlu yollardan geçmiş, devlerle savaşmış, bilmeceler çözmüş ve sonunda çiçeği bulup saraya getirmiş. Çiçeği koklayan prenses hemen iyileşmiş. Padişah sözünü tutmuş, Keloğlan ve annesi ömür boyu bolluk içinde, mutlu mesut yaşamışlar. Gökten üç elma düşmüş; biri anlatana, biri dinleyene, biri de iyilik yapıp karşılığını beklemeyenlere.",
-            level: 10,
-            questions: [
-              { q: "Kuş, Keloğlan'a ne verdi?", options: ["Bir altın", "Bir tüy", "Bir elma", "Bir harita"], answer: 1 },
-              { q: "Prenses nasıl iyileşti?", options: ["İlaç içerek", "Uyuyarak", "Kaf dağındaki çiçeği koklayarak", "Su içerek"], answer: 2 },
-              { q: "Keloğlan kuşu nerede buldu?", options: ["Köy meydanında", "Sarayın bahçesinde", "Ormanda odun toplarken", "Pazarda gezerken"], answer: 2 },
-              { q: "Keloğlan tüyü neden yaktı?", options: ["Isınmak için", "Karanlıkta kaldığı için", "Prensesi iyileştirmek için yardım istemek amacıyla", "Yanlışlıkla"], answer: 2 },
-              { q: "Padişah prensesi iyileştirene ne vaat etti?", options: ["Ağırlığınca altın", "Yarım krallık", "Yeni bir ev", "Sihirli bir at"], answer: 0 }
-            ]
-          }
-        ];
-
-        const EXERCISE_TYPES = [
-          { id: 'kelime_avi', title: 'Kelime Avı', category: 'Dikkat', type: 'grid' },
-          { id: 'farkli_kelime', title: 'Farklı Kelime Çifti', category: 'Dikkat', type: 'grid_diff' }, 
-          { id: 'cift_tek', title: 'Çift/Tek Sayı', category: 'Matematik', type: 'math_logic' }, 
-          { id: 'aranan_sayi', title: 'Aranan Sayıyı Bul', category: 'Dikkat', type: 'search_num' }, 
-          { id: 'istenen_harf', title: 'İstenen Harfleri Bul', category: 'Dikkat', type: 'search_letter' },
-          { id: 'goster_kelime', title: 'Kelimeyi Hatırla', category: 'Hafıza', type: 'flash_memory' },
-          { id: 'karisik_kelime', title: 'Karışık Kelime Bul', category: 'Kelime', type: 'scramble_word' },
-          { id: 'goster_cumle', title: 'Cümleyi Hatırla', category: 'Hafıza', type: 'flash_sentence' },
-          { id: 'goz_takibi', title: 'Göz Takibi (Emoji Sayma)', category: 'Göz Kası', type: 'eye_track_count' },
-          { id: 'takistoskop', title: 'Takistoskopik Okuma', category: 'Okuma', type: 'tachistoscope_text' },
-        ];
-
-        const DEFAULT_WORD_POOL = [
-            "Araba", "Bebek", "Ceviz", "Davul", "Elma", "Fıstık", "Gemi", "Halı", "Işık", "Jeton",
-            "Kalem", "Limon", "Masa", "Nar", "Okul", "Para", "Radyo", "Saat", "Top", "Uçak",
-            "Vazo", "Yol", "Zil", "Ağaç", "Balık", "Cam", "Deniz", "Ev", "Fare", "Göz",
-            "Hava", "İp", "Jilet", "Kedi", "Lale", "Muz", "Nehir", "Orman", "Peynir", "Resim",
-            "Süt", "Tuz", "Un", "Vapur", "Yağmur", "Zeytin", "Ay", "Bıçak", "Ceket", "Dere",
-            "Ekmek", "Fırça", "Güneş", "Halat", "İğne", "Jandarma", "Kağıt", "Lamba", "Makas", "Nane",
-            "Oda", "Pil", "Renk", "Silgi", "Tarak", "Uyku", "Vadi", "Yastık", "Zarf", "Akıl",
-            "Beyin", "Cesur", "Dürüst", "Eski", "Fakir", "Güzel", "Hızlı", "İyi", "Japon", "Kısa",
-            "Lazım", "Mutlu", "Nadir", "Orta", "Pahalı", "Rahat", "Sıcak", "Temiz", "Uzun", "Var",
-            "Yok", "Zengin", "Açık", "Boş", "Ciddi", "Dolu", "Erken", "Geç", "Hafif", "İnce"
-        ];
-        const DEFAULT_SENTENCE_POOL = [
-            "Bugün hava çok güzel.",
-            "Yarın sinemaya gideceğiz.",
-            "Kitap okumayı çok seviyorum.",
-            "Annem lezzetli yemekler yapar.",
-            "Babam işten geç geldi.",
-            "Kardeşimle parkta oyun oynadık.",
-            "Okulda yeni arkadaşlar edindim.",
-            "Ödevlerimi zamanında bitirdim.",
-            "Akşam yemeğinde tavuk yedik.",
-            "Sabah erkenden kalktım.",
-            "Dişlerimi günde iki kez fırçalarım.",
-            "Ellerimizi sık sık yıkamalıyız.",
-            "Sağlıklı beslenmek önemlidir.",
-            "Spor yapmak vücuda iyi gelir.",
-            "Müzik dinlemek beni rahatlatır.",
-            "Resim yapmayı öğrenmek istiyorum.",
-            "Yaz tatilinde denize gireceğim.",
-            "Kışın kardan adam yaparız.",
-            "Sonbaharda yapraklar dökülür.",
-            "İlkbaharda çiçekler açar.",
-            "Doğayı korumalıyız.",
-            "Hayvanlara zarar vermemeliyiz.",
-            "Yaşlılara yardım etmeliyiz.",
-            "Küçüklere sevgi göstermeliyiz.",
-            "Yalan söylemek kötüdür.",
-            "Dürüst olmak erdemdir.",
-            "Çalışkan olmak başarı getirir.",
-            "Tembellikten kaçınmalıyız.",
-            "Zamanı iyi kullanmalıyız.",
-            "Planlı çalışmak önemlidir.",
-            "Hedeflerimize ulaşmak için çabalamalıyız.",
-            "Hayallerimizin peşinden gitmeliyiz.",
-            "Asla pes etmemeliyiz.",
-            "Hatalarımızdan ders çıkarmalıyız.",
-            "Başarısızlık başarının anahtarıdır.",
-            "Öğrenmenin yaşı yoktur.",
-            "Her gün yeni bir şeyler öğrenmeliyiz.",
-            "Kitaplar en iyi dostumuzdur.",
-            "Bilgi güçtür.",
-            "Cahillik mutluluk değildir.",
-            "Saygı görmek istiyorsan saygı göster.",
-            "Sevgi paylaştıkça çoğalır.",
-            "Gülümsemek sadakadır.",
-            "İyilik yap denize at.",
-            "Damlaya damlaya göl olur.",
-            "Sakla samanı gelir zamanı.",
-            "Ayağını yorganına göre uzat.",
-            "Üzüm üzüme baka baka kararır.",
-            "Komşu komşunun külüne muhtaçtır.",
-            "Bir elin nesi var iki elin sesi var.",
-            "Birlikten kuvvet doğar.",
-            "Yalnız taş duvar olmaz.",
-            "Ağaç yaşken eğilir.",
-            "Demir tavında dövülür.",
-            "İşleyen demir ışıldar.",
-            "Emek olmadan yemek olmaz.",
-            "Zahmetsiz rahmet olmaz.",
-            "Sabır acıdır meyvesi tatlıdır.",
-            "Acele işe şeytan karışır.",
-            "Öfkeyle kalkan zararla oturur.",
-            "Keskin sirke küpüne zarar.",
-            "Tatlı dil yılanı deliğinden çıkarır.",
-            "Söz gümüşse sükut altındır.",
-            "Doğru söyleyeni dokuz köyden kovarlar.",
-            "Yalancının mumu yatsıya kadar yanar.",
-            "Güneş girmeyen eve doktor girer.",
-            "Sağlam kafa sağlam vücutta bulunur.",
-            "Erken kalkan yol alır.",
-            "Vakit nakittir.",
-            "Bugünün işini yarına bırakma.",
-            "Tasarruf etmek önemlidir.",
-            "İsraftan kaçınmalıyız.",
-            "Suyu boşa harcamamalıyız.",
-            "Elektriği gereksiz yere kullanmamalıyız.",
-            "Geri dönüşüme önem vermeliyiz.",
-            "Çevremizi temiz tutmalıyız.",
-            "Ağaç dikmeliyiz.",
-            "Ormanları korumalıyız.",
-            "Denizleri kirletmemeliyiz.",
-            "Dünyamız bizim evimizdir.",
-            "Barış içinde yaşamalıyız.",
-            "Savaşlara hayır demeliyiz.",
-            "Çocuklar geleceğimizdir.",
-            "Eğitim her çocuğun hakkıdır.",
-            "Adalet mülkün temelidir.",
-            "Hukukun üstünlüğüne inanmalıyız.",
-            "Demokrasiye sahip çıkmalıyız.",
-            "Özgürlük en büyük değerdir.",
-            "İnsan haklarına saygı duymalıyız.",
-            "Herkes eşittir.",
-            "Ayrımcılık yapmamalıyız.",
-            "Farklılıklara hoşgörülü olmalıyız.",
-            "Empati kurmalıyız.",
-            "Birbirimizi anlamaya çalışmalıyız.",
-            "İletişim kurmak önemlidir.",
-            "Dinlemeyi bilmeliyiz.",
-            "Konuşurken nazik olmalıyız.",
-            "Teşekkür etmeyi unutmamalıyız.",
-            "Özür dilemek erdemdir.",
-            "Affetmek büyüklüktür."
-        ];
-        const EMOJI_POOL = ['🍎', '🍌', '🍒', '🍕', '🚀', '🐱', '🐶', '⚽', '🚗', '⭐', '🎈', '🎉'];
-        const ALPHABET = "ABCÇDEFGĞHİIJKLMNOÖPRSŞTUÜVYZ";
 
         // --- ANA BİLEŞEN ---
         const App = () => {
@@ -442,7 +246,6 @@
                 if (tRes.success && tRes.texts.length > 0) setTexts(tRes.texts);
                 else setTexts(INITIAL_TEXTS);
 
-                // Ayarları Çek
                 const cRes = await DataService.request('getConfig');
                 if (cRes.success && cRes.config) {
                      const cfg = cRes.config;
@@ -478,7 +281,6 @@
                 setAuthState('login');
             };
 
-            // Ayarları Kaydetme Fonksiyonu
             const saveConfig = async (newWordPool, newSentencePool, newExerciseSettings) => {
                 const config = {
                     wordPool: newWordPool || wordPool,
@@ -524,16 +326,10 @@
                         sentencePool={sentencePool}
                         exerciseSettings={exerciseSettings}
                         saveConfig={saveConfig}
-                        userStats={currentUser ? {wpmHistory: [], exerciseStats: {}} : {wpmHistory:[], exerciseStats:{}}} // Initial stub, will be populated in MainApp
                     />
                 </>
             );
         };
-
-        // ... LoginScreen, MainApp, Dashboard vb. bileşenler önceki kodla aynı kalacak.
-        // Yer tasarrufu için, burada sadece değişen kısımları gösterdim.
-        // Ancak tam dosya için önceki blokları referans alabilirsiniz.
-        // Önemli olan App bileşenindeki fetchInitialData ve saveConfig fonksiyonlarının güncellenmiş olmasıdır.
 
         const LoginScreen = ({ users, isLoading, onAdminLogin, onUserSelect, fetchUsers }) => {
             const [mode, setMode] = useState('user'); 
@@ -647,7 +443,7 @@
             const [currentExercise, setCurrentExercise] = useState(null);
 
             // Last WPM Retrieval for Adaptive Speed
-            const lastWpm = userStats.wpmHistory.length > 0 
+            const lastWpm = userStats.wpmHistory && userStats.wpmHistory.length > 0 
                 ? userStats.wpmHistory[userStats.wpmHistory.length - 1].wpm 
                 : 200; // Default if no history
 
