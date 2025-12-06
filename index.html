@@ -41,9 +41,11 @@
         const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } = RechartsObj;
 
         // --- SafeChart Tanımlaması ---
-        const SafeChart = ({ data, color = "#4f46e5" }) => {
+        const SafeChart = ({ data, dataKey, color = "#4f46e5" }) => {
             if (!RechartsObj.LineChart) return <div>Grafik Yükleniyor...</div>;
             if (!data || data.length === 0) return <div className="flex h-full items-center justify-center text-gray-400 text-sm">Veri yok</div>;
+
+            const keyToUse = dataKey || (data[0]?.wpm ? "wpm" : "score");
 
             return (
                <ResponsiveContainer width="100%" height="100%">
@@ -52,7 +54,7 @@
                    <XAxis dataKey="date" fontSize={10} tick={{fill: '#6b7280'}} tickFormatter={(v) => (v ? String(v).split(' ')[0] : '')} />
                    <YAxis fontSize={10} tick={{fill: '#6b7280'}} />
                    <Tooltip />
-                   <Line type="monotone" dataKey={data[0]?.wpm ? "wpm" : "score"} stroke={color} strokeWidth={3} dot={{r: 4}} />
+                   <Line type="monotone" dataKey={keyToUse} stroke={color} strokeWidth={3} dot={{r: 4}} />
                  </LineChart>
                </ResponsiveContainer>
             );
@@ -126,7 +128,7 @@
             }
         };
 
-        // --- İKONLAR (GLOBAL) ---
+        // --- İKONLAR ---
         const IconBase = ({ children, ...props }) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg> );
         const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></IconBase>;
         const BookOpen = (props) => <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></IconBase>;
@@ -151,6 +153,7 @@
         const Cloud = (props) => <IconBase {...props}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></IconBase>;
         const List = (props) => <IconBase {...props}><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></IconBase>;
         const Edit = (props) => <IconBase {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></IconBase>;
+        const ArrowLeft = (props) => <IconBase {...props}><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></IconBase>;
 
         // --- YARDIMCI FONKSİYONLAR ---
         const generateRandomNumber = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -282,6 +285,7 @@
             const handleUserSelect = (u, p) => { if (u.password && u.password !== p) return false; setCurrentUser(u); setIsAdmin(false); setAuthState('app'); return true; };
             const handleLogout = () => { setCurrentUser(null); setIsAdmin(false); setAuthState('login'); };
 
+            // Ayarları Kaydetme
             const saveConfig = async (newWordPool, newSentencePool, newExerciseSettings, newUserSettings) => {
                 const config = {
                     wordPool: newWordPool || wordPool,
@@ -323,6 +327,7 @@
             );
         };
 
+        // ... LoginScreen ...
         const LoginScreen = ({ users, isLoading, onAdminLogin, onUserSelect, fetchUsers }) => {
             const [mode, setMode] = useState('user'); 
             const [adminUser, setAdminUser] = useState('');
@@ -495,7 +500,19 @@
                     );
                 }
 
-                if (activeTab === 'dashboard') return <Dashboard stats={userStats} texts={texts} user={viewingUser} onStart={() => setActiveTab('test')} isAdmin={isAdmin} />;
+                if (activeTab === 'dashboard') return (
+                    <Dashboard 
+                        stats={userStats} 
+                        texts={texts} 
+                        user={viewingUser} 
+                        onStart={() => setActiveTab('test')} 
+                        isAdmin={isAdmin}
+                        onBackToUsers={() => { 
+                            if(isAdmin) { setActiveTab('admin_users'); setViewingUser(currentUser); } 
+                        }}
+                    />
+                );
+                
                 if (activeTab === 'test' && !isAdmin) return <ReadingTest texts={texts} readTextIds={[]} onComplete={(res) => { saveStat('reading', res.wpm, res.textId, { accuracy: res.accuracy }); setActiveTab('dashboard'); }} />;
                 if (activeTab === 'exercises' && !isAdmin) return <ExerciseMenu onSelect={setCurrentExercise} stats={userStats} />;
                 if (activeTab === 'admin_users' && isAdmin) return (
@@ -552,12 +569,16 @@
             );
         };
 
-        const Dashboard = ({ stats, texts, user, onStart, isAdmin }) => {
+        const Dashboard = ({ stats, texts, user, onStart, isAdmin, onBackToUsers }) => {
             const lastResult = stats.wpmHistory && stats.wpmHistory.length > 0 ? stats.wpmHistory[stats.wpmHistory.length - 1] : null;
             return (
                 <div className="space-y-8 animate-in">
                     <header className="flex justify-between items-center mb-6">
-                        <div><h2 className="text-2xl font-bold text-gray-800">{user.name} - Gelişim Raporu</h2><p className="text-gray-500">Tüm zamanların performans özeti</p></div>
+                        <div>
+                            {isAdmin && <button onClick={onBackToUsers} className="text-sm text-indigo-600 hover:underline mb-1 flex items-center gap-1"><ArrowLeft size={14}/> Listeye Dön</button>}
+                            <h2 className="text-2xl font-bold text-gray-800">{user.name} - Gelişim Raporu</h2>
+                            <p className="text-gray-500">Tüm zamanların performans özeti</p>
+                        </div>
                         {isAdmin && <div className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg font-bold border border-yellow-200">👀 İzleme Modu</div>}
                     </header>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -567,8 +588,37 @@
                     </div>
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
                          <h3 className="text-lg font-semibold mb-4 text-indigo-700">Okuma Hızı Gelişimi</h3>
-                         <div className="h-64">{stats.wpmHistory && stats.wpmHistory.length > 0 ? (<SafeChart data={stats.wpmHistory} />) : (<div className="h-full flex items-center justify-center text-gray-400">Henüz okuma verisi yok.</div>)}</div>
+                         <div className="h-64">{stats.wpmHistory && stats.wpmHistory.length > 0 ? (<SafeChart data={stats.wpmHistory} dataKey="wpm" />) : (<div className="h-full flex items-center justify-center text-gray-400">Henüz okuma verisi yok.</div>)}</div>
                     </div>
+
+                    <h3 className="text-xl font-bold text-gray-800 mt-8 mb-4 border-b pb-2">Egzersiz Performans Grafikleri</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {EXERCISE_TYPES.map(ex => {
+                            const data = stats.exerciseStats ? stats.exerciseStats[ex.id] : [];
+                            if(!data || data.length === 0) return null;
+                            return (
+                                <div key={ex.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                    <h4 className="font-bold text-gray-700 mb-2">{ex.title}</h4>
+                                    <div className="h-40">
+                                        <SafeChart data={data} dataKey="score" color="#10b981" />
+                                    </div>
+                                </div>
+                            )
+                        })}
+                        {(!stats.exerciseStats || Object.keys(stats.exerciseStats).length === 0) && (
+                             <div className="col-span-full text-center py-8 text-gray-400 italic bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                Henüz oynanmış oyun verisi bulunmuyor.
+                             </div>
+                        )}
+                    </div>
+
+                    {!isAdmin && (
+                        <div className="text-center py-8">
+                            <button onClick={onStart} className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 hover:scale-105 transition transform flex items-center gap-2 mx-auto">
+                                <Play fill="currentColor" /> Yeni Hız Testi Başlat
+                            </button>
+                        </div>
+                    )}
                 </div>
             );
         };
@@ -1274,7 +1324,7 @@
                   return null;
               }
 
-              if (!gameData) return null;
+              if (!gameData) return <div className="p-10 text-center">Egzersiz yükleniyor...</div>;
 
               if (exercise.type === 'eye_track_count') {
                   if (eyeTrackPhase === 'start') {
