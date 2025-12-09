@@ -128,7 +128,7 @@
             }
         };
 
-        // --- İKONLAR (GLOBAL) ---
+        // --- İKONLAR ---
         const IconBase = ({ children, ...props }) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg> );
         const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></IconBase>;
         const BookOpen = (props) => <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></IconBase>;
@@ -160,7 +160,6 @@
         const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
         const randomizeCase = (w) => Math.random() > 0.5 ? w.charAt(0).toLowerCase() + w.slice(1) : w.charAt(0).toUpperCase() + w.slice(1);
         
-        // Akıllı Typo Algoritması
         const createTypo = (word) => {
           if (!word || word.length < 2) return word + 'x';
           const vowels = "aeıioöuü";
@@ -194,123 +193,15 @@
               { q: "Karga başlangıçta ne durumdaydı?", options: ["Çok açtı", "Çok uykusuzdu", "Çok susamıştı", "Çok yorgundu"], answer: 2 }
             ]
           },
-          { 
-            id: 2, 
-            title: "Aslan ile Fare", 
-            content: "Ormanlar kralı aslan bir gün uyurken, minik bir fare onun üzerinde dolaşmaya başlamış. Aslan uyanıp fareyi yakalamış. Fare yalvarmış: 'Bırak beni, gün olur sana iyiliğim dokunur.' Aslan gülmüş ama fareyi bırakmış. Günler sonra aslan avcıların tuzağına düşmüş. Kükremesini duyan fare gelmiş, ipleri kemirerek aslanı kurtarmış. Aslan, küçük bir farenin bile büyük işler yapabileceğini anlamış.", 
-            level: 2, 
-            questions: [
-              {q: "Fare aslanı nasıl kurtardı?", options: ["Avcıları korkutarak", "İpleri kemirerek", "Diğer hayvanları çağırarak", "Anahtarı bularak"], answer: 1},
-              {q: "Aslan fareyi ilk başta neden serbest bıraktı?", options: ["Fareden korktuğu için", "Farenin yalvarmasına güldüğü için", "Karnı tok olduğu için", "Fare kaçtığı için"], answer: 1},
-              {q: "Aslan neyin tuzağına düştü?", options: ["Bir çukurun", "Avcıların ağının", "Büyük bir kafesin", "Bataklığın"], answer: 1},
-              {q: "Hikayenin ana fikri nedir?", options: ["Güçlüler her zaman kazanır", "Küçük dostlar büyük işler başarabilir", "Aslanlar ormanın kralıdır", "Avcılar tehlikelidir"], answer: 1},
-              {q: "Fare aslanın üzerinde ne yapıyordu?", options: ["Yemek yiyordu", "Uyuyordu", "Dolaşıyordu", "Saklanıyordu"], answer: 2}
-            ] 
-          },
-          { 
-            id: 3, 
-            title: "Tilki ile Üzüm", 
-            content: "Bir tilki, karnı aç bir şekilde ormanda dolaşıyordu. Başını yukarı kaldırdığında, bir asmadan sarkan nefis üzüm salkımları gördü. Üzümler olgundu ve iştah açıcı görünüyordu. Tilki zıpladı ama yetişemedi. Bir daha denedi, yine olmadı. Defalarca zıplamasına rağmen üzümlere ulaşamadı. Sonunda yorgun düşen tilki, 'Zaten bu üzümler korukmuş, yenmezmiş' diyerek oradan uzaklaştı.", 
-            level: 3, 
-            questions: [
-              {q: "Tilki üzümlere ulaşamayınca ne dedi?", options: ["Çok lezzetliymiş", "Zaten korukmuş", "Yarın gelirim", "Boyum yetmedi"], answer: 1},
-              {q: "Tilki ormanda neden dolaşıyordu?", options: ["Arkadaş arıyordu", "Spor yapıyordu", "Karnı açtı", "Yolu kaybetmişti"], answer: 2},
-              {q: "Tilki üzümlere ulaşmak için ne yaptı?", options: ["Ağaca tırmandı", "Merdiven buldu", "Zıpladı", "Taş attı"], answer: 2},
-              {q: "Hikayedeki 'koruk' ne anlama gelir?", options: ["Olgunlaşmamış ekşi üzüm", "Çürük meyve", "Kuru dal", "Zehirli bitki"], answer: 0},
-              {q: "Tilki sonunda ne yaptı?", options: ["Üzümleri yedi", "Ağladı", "Vazgeçip gitti", "Uyudu"], answer: 2}
-            ] 
-          },
-          { 
-            id: 4, 
-            title: "Tavşan ile Kaplumbağa", 
-            content: "Tavşan, hızıyla övünmeyi çok severdi. Kaplumbağa ise yavaşlığıyla bilinirdi. Bir gün yarışmaya karar verdiler. Yarış başladı, tavşan ok gibi fırladı. Yarı yola gelince 'Nasılsa kaplumbağa çok geride, şurada biraz uyuyayım' dedi. Kaplumbağa ise hiç durmadan, yavaş ama kararlı adımlarla yürüdü. Tavşan uyandığında bir de baktı ki kaplumbağa bitiş çizgisine varmış. Yarışı kazanan, azimle devam eden kaplumbağa oldu.", 
-            level: 4, 
-            questions: [
-              {q: "Yarışı kim kazandı?", options: ["Tavşan", "Kaplumbağa", "Tilki", "Hakem"], answer: 1},
-              {q: "Tavşan yarış sırasında ne yaptı?", options: ["Havuç yedi", "Su içti", "Uyudu", "Kitap okudu"], answer: 2},
-              {q: "Kaplumbağanın kazanmasını sağlayan özellik neydi?", options: ["Hızlı olması", "Kurnazlığı", "Kararlı ve azimli olması", "Şanslı olması"], answer: 2},
-              {q: "Tavşan neyi ile övünürdü?", options: ["Zekasıyla", "Hızıyla", "Güzelliğiyle", "Gücüyle"], answer: 1},
-              {q: "Tavşan uyandığında ne gördü?", options: ["Hala önde olduğunu", "Yarışın bittiğini", "Kaplumbağanın bitişe vardığını", "Hava karardığını"], answer: 2}
-            ] 
-          },
-          { 
-            id: 5, 
-            title: "Ağustos Böceği ile Karınca", 
-            content: "Yaz boyunca Ağustos böceği saz çaldı, şarkı söyledi ve eğlendi. Karınca ise hiç durmadan çalıştı, kış için yuvasına yiyecek taşıdı. Ağustos böceği karıncaya gülüp, 'Bu güzel havanın tadını çıkarsana' dedi. Karınca, 'Kış gelince aç kalmamak için çalışmalıyım' diye cevap verdi. Günler geçti, havalar soğudu ve kış geldi. Her yer karla kaplandı. Ağustos böceği yiyecek bulamadı ve aç kaldı. Titreyerek karıncanın kapısını çaldı. Karınca ise sıcacık yuvasında rahattı. Ağustos böceği hatasını anladı ama iş işten geçmişti.", 
-            level: 5, 
-            questions: [
-              {q: "Karınca ne yaptı?", options: ["Yattı", "Çalıştı", "Gezdi", "Uyudu"], answer: 1},
-              {q: "Ağustos böceği yazın ne yaptı?", options: ["Çalıştı", "Eğlendi ve saz çaldı", "Yuva yaptı", "Yemek topladı"], answer: 1},
-              {q: "Kış gelince Ağustos böceğinin durumu neydi?", options: ["Çok mutluydu", "Toktu", "Aç ve üşümüştü", "Sıcak evindeydi"], answer: 2},
-              {q: "Karınca neden yazın çalıştı?", options: ["Canı sıkıldığı için", "Spor olsun diye", "Kışa hazırlık yapmak için", "Emir aldığı için"], answer: 2},
-              {q: "Hikayenin ana fikri nedir?", options: ["Eğlenmek her şeyden önemlidir", "Geleceği düşünüp çalışmak gerekir", "Yazın tatil yapılmalıdır", "Müzik ruhun gıdasıdır"], answer: 1}
-            ] 
-          },
-          { 
-            id: 6, 
-            title: "Rüzgar ile Güneş", 
-            content: "Bir gün rüzgar ile güneş, hangisinin daha güçlü olduğu konusunda tartışmaya başladılar. O sırada yolda kalın bir palto giymiş bir adam yürüyordu. Rüzgar, 'Ben o adamın paltosunu çıkarırım' dedi ve tüm gücüyle esmeye başladı. Fırtına gibi esti ama o estikçe adam paltosuna daha sıkı sarıldı. Rüzgar yoruldu ve pes etti. Sıra güneşe geldi. Güneş bulutların arkasından çıktı ve nazikçe parlamaya başladı. Hava ısındıkça adam terledi. Önce düğmelerini açtı, sonra sıcak dayanılamaz hale gelince paltosunu çıkarıp koluna aldı. Güneş, nezaketin kaba kuvvetten daha etkili olduğunu kanıtladı.", 
-            level: 6, 
-            questions: [
-              {q: "Yarışmayı kim kazandı?", options: ["Rüzgar", "Adam", "Güneş", "Bulut"], answer: 2},
-              {q: "Rüzgar adamın paltosunu çıkarmak için ne yaptı?", options: ["Sıcak üfledi", "Şiddetle esti", "Yağmur yağdırdı", "Konuştu"], answer: 1},
-              {q: "Güneş ne yaparak kazandı?", options: ["Daha çok parlayıp ısıtarak", "Rüzgarı iterek", "Bulutları çağırarak", "Adama seslenerek"], answer: 0},
-              {q: "Rüzgar estikçe adam ne yaptı?", options: ["Paltosunu çıkardı", "Paltosuna sıkıca sarıldı", "Şapkasını attı", "Koştu"], answer: 1},
-              {q: "Hikayenin dersi nedir?", options: ["Güç her şeyi çözer", "Nezaket zorbalıktan üstündür", "Hava durumu değişebilir", "Kışın kalın giyinmeli"], answer: 1}
-            ] 
-          },
-          { 
-            id: 7, 
-            title: "Altın Yumurtlayan Tavuk", 
-            content: "Bir zamanlar fakir bir köylünün bir tavuğu vardı. Bu tavuk, diğerlerinden farklıydı çünkü her gün bir tane altın yumurta yumurtluyordu. Köylü bu yumurtaları satarak kısa sürede zengin oldu. Ancak köylü çok açgözlüydü. Her gün sadece bir yumurta almak ona yetmiyordu. 'Tavuğun içinde hazine olmalı, hepsini birden almalıyım' diye düşündü. Bir gün dayanamayıp tavuğu kesti. Fakat tavuğun içi diğer tavuklardan farksızdı. Ne hazine vardı ne de altın. Açgözlü köylü, elindeki değerli tavuğu da kaybetmiş oldu ve eski fakir günlerine geri döndü.", 
-            level: 7, 
-            questions: [
-              {q: "Köylü tavuğu neden kesti?", options: ["Yemek için", "Hasta olduğu için", "İçindeki tüm altınları almak için", "Yaşlandığı için"], answer: 2},
-              {q: "Tavuğun özelliği neydi?", options: ["Çok büyüktü", "Altın yumurtluyordu", "Konuşabiliyordu", "Mavi renkliydi"], answer: 1},
-              {q: "Tavuğu kesince ne buldu?", options: ["Büyük bir hazine", "Hiçbir şey, normal bir tavuk içi", "Bir kese altın", "Elmaslar"], answer: 1},
-              {q: "Köylünün yaptığı hata neydi?", options: ["Tembellik", "Korkaklık", "Açgözlülük", "Cömertlik"], answer: 2},
-              {q: "Sonunda köylüye ne oldu?", options: ["Daha zengin oldu", "Eski fakir haline döndü", "Kral oldu", "Başka tavuk aldı"], answer: 1}
-            ] 
-          },
-          { 
-            id: 8, 
-            title: "Yalancı Çoban", 
-            content: "Köyün birinde koyunları otlatan bir çoban varmış. Canı sıkılan çoban, köylülere şaka yapmak istemiş. Köye doğru koşarak 'Kurt var! Kurt saldırıyor!' diye bağırmış. Köylüler işlerini bırakıp yardıma koşmuşlar ama ortada kurt falan yokmuş. Çoban gülerek 'Şaka yaptım' demiş. Köylüler kızmış ama geri dönmüşler. Birkaç gün sonra çoban aynı şakayı tekrar yapmış. Köylüler yine yardıma gelmiş, yine kandırıldıklarını anlamışlar. Günlerden bir gün, gerçekten sürüye bir kurt saldırmış. Çoban korkuyla 'Kurt var! Yardım edin!' diye bağırmış. Ancak köylüler, çobanın yine yalan söylediğini düşünerek yardıma gitmemişler. Kurt, sürüdeki koyunları kapmış. Çoban, yalancılığının bedelini ağır ödemiş.", 
-            level: 8, 
-            questions: [
-              {q: "Köylüler son seferde neden yardıma gelmedi?", options: ["Duymadılar", "Çobana inanmadılar", "Korktular", "Meşguldüler"], answer: 1},
-              {q: "Çoban ilk başta neden bağırdı?", options: ["Kurt gördüğü için", "Korktuğu için", "Şaka yapmak için", "Koyunları kaybettiği için"], answer: 2},
-              {q: "Gerçek kurt gelince ne oldu?", options: ["Çoban kurdu kaçırdı", "Köylüler kurdu yakaladı", "Kurt koyunları kaptı", "Köpekler kurdu kovaladı"], answer: 2},
-              {q: "Köylüler şakayı öğrenince ne hissetti?", options: ["Güldüler", "Kızdılar", "Umursamadılar", "Sevindiler"], answer: 1},
-              {q: "Hikayeden ne ders çıkarırız?", options: ["Yalancıya doğru söylese de inanılmaz", "Şaka yapmak komiktir", "Çobanlık zordur", "Kurtlar hızlı koşar"], answer: 0}
-            ] 
-          },
-          { 
-            id: 9, 
-            title: "Şehir Faresi ile Tarla Faresi", 
-            content: "Bir gün şehir faresi, uzaktan akrabası olan tarla faresini ziyarete gitmiş. Tarla faresi misafirine buğday, kökler ve mısır ikram etmiş. Şehir faresi, 'Sen burada çok fakir yaşıyorsun, gel benimle şehre gidelim, orada krallar gibi yaşarız' demiş. Birlikte şehre, büyük bir konağa gitmişler. Sofrada peynirler, pastalar, etler varmış. Tam yemeye başlayacaklarken kapı açılmış, içeri insanlar girmiş. Fareler korkuyla deliğe kaçmış. Saklandıkları yerde titrerken evin kedisi gelmiş, onları kovalamış. Tarla faresi korkudan nefes nefese kalmış. 'Benim evimde yiyecekler az ama huzurum var' demiş. 'Senin sofraların zengin ama korku içinde yaşıyorsun. Ben fakir ama özgür hayatımı tercih ederim.' diyerek tarlasına geri dönmüş.", 
-            level: 9, 
-            questions: [
-              {q: "Tarla faresi neden geri döndü?", options: ["Yemeği beğenmedi", "Korku içinde yaşamak istemedi", "Yolu unuttu", "Köyünü özledi"], answer: 1},
-              {q: "Şehir faresi arkadaşına ne teklif etti?", options: ["Tarlada kalmayı", "Şehre gelip zengin yaşamayı", "Ormanda gezmeyi", "Oyun oynamayı"], answer: 1},
-              {q: "Şehirdeki evde onları ne korkuttu?", options: ["Sadece rüzgar", "Sadece kedi", "İnsanlar ve kedi", "Diğer fareler"], answer: 2},
-              {q: "Tarla faresi misafirine ne ikram etti?", options: ["Peynir ve et", "Pasta", "Buğday ve mısır", "Bal"], answer: 2},
-              {q: "Hikayenin ana fikri nedir?", options: ["Zenginlik her şeydir", "Şehir hayatı zordur", "Huzurlu fakirlik, korkulu zenginlikten iyidir", "Fareler peynir sever"], answer: 2}
-            ] 
-          },
-          { 
-            id: 10, 
-            title: "Keloğlan ve Sihirli Kuş", 
-            content: "Bir varmış, bir yokmuş. Evvel zaman içinde, kalbur saman içinde, uzak diyarların birinde Keloğlan ile yaşlı annesi yaşarmış. Fakirlik bellerini bükmüş, yiyecek bir lokma ekmekleri kalmamış. Keloğlan bir gün ormana odun toplamaya gitmiş. Ormanın derinliklerinde, tüyleri gökkuşağı gibi parlayan, kanatları altından daha parlak, eşi benzeri görülmemiş bir kuş görmüş. Kuşun ayağı bir çalıya takılmış, çırpınıp duruyormuş. Keloğlan'ın yüreği el vermemiş, hemen koşup kuşu kurtarmış. Kuş dile gelmiş: 'Ey iyi kalpli Keloğlan! Sen beni kurtardın, ben de sana bir iyilik yapacağım. Al bu tüyümü, ne zaman başın sıkışırsa bu tüyü yak, ben hemen gelirim.' demiş ve uçup gitmiş.\n\nGünler geçmiş, padişahın kızı amansız bir hastalığa yakalanmış. Ülkenin tüm hekimleri gelmiş ama çare bulamamışlar. Padişah, kızını iyileştirene ağırlığınca altın vereceğini duyurmuş. Keloğlan bunu duyunca aklına sihirli kuş gelmiş. Hemen tüyü yakmış. Anında gökkuşağı renkli kuş belirmiş. Keloğlan durumu anlatmış. Kuş, 'Kaf dağının ardında Zümrüdüanka kuşunun gözyaşıyla sulanan bir çiçek vardır. O çiçeği getirirsen prenses iyileşir' demiş ve Keloğlan'ı sırtına alıp Kaf dağına uçurmuş.\n\nKeloğlan zorlu yollardan geçmiş, devlerle savaşmış, bilmeceler çözmüş ve sonunda çiçeği bulup saraya getirmiş. Çiçeği koklayan prenses hemen iyileşmiş. Padişah sözünü tutmuş, Keloğlan ve annesi ömür boyu bolluk içinde, mutlu mesut yaşamışlar. Gökten üç elma düşmüş; biri anlatana, biri dinleyene, biri de iyilik yapıp karşılığını beklemeyenlere.", 
-            level: 10, 
-            questions: [
-              {q: "Kuş, Keloğlan'a ne verdi?", options: ["Bir altın", "Bir tüy", "Bir elma", "Bir harita"], answer: 1},
-              {q: "Prenses nasıl iyileşti?", options: ["İlaç içerek", "Uyuyarak", "Sihirli çiçeği koklayarak", "Su içerek"], answer: 2},
-              {q: "Keloğlan kuşu nerede buldu?", options: ["Köy meydanında", "Sarayda", "Ormanda odun toplarken", "Pazarda"], answer: 2},
-              {q: "Keloğlan tüyü neden yaktı?", options: ["Isınmak için", "Yanlışlıkla", "Yardım istemek için", "Karanlıkta kaldığı için"], answer: 2},
-              {q: "Padişahın vaadi neydi?", options: ["Ağırlığınca altın", "Yarım krallık", "Sihirli at", "Yeni bir ev"], answer: 0}
-            ] 
-          }
+          { id: 2, title: "Aslan ile Fare", content: "Ormanlar kralı aslan bir gün uyurken, minik bir fare onun üzerinde dolaşmaya başlamış. Aslan uyanıp fareyi yakalamış. Fare yalvarmış: 'Bırak beni, gün olur sana iyiliğim dokunur.' Aslan gülmüş ama fareyi bırakmış. Günler sonra aslan avcıların tuzağına düşmüş. Kükremesini duyan fare gelmiş, ipleri kemirerek aslanı kurtarmış. Aslan, küçük bir farenin bile büyük işler yapabileceğini anlamış.", level: 2, questions: [{q: "Fare aslanı nasıl kurtardı?", options: ["Avcıları korkutarak", "İpleri kemirerek", "Diğer hayvanları çağırarak", "Anahtarı bularak"], answer: 1}] },
+          { id: 3, title: "Tilki ile Üzüm", content: "Bir tilki, karnı aç bir şekilde ormanda dolaşıyordu. Başını yukarı kaldırdığında, bir asmadan sarkan nefis üzüm salkımları gördü. Üzümler olgundu ve iştah açıcı görünüyordu. Tilki zıpladı ama yetişemedi. Bir daha denedi, yine olmadı. Defalarca zıplamasına rağmen üzümlere ulaşamadı. Sonunda yorgun düşen tilki, 'Zaten bu üzümler korukmuş, yenmezmiş' diyerek oradan uzaklaştı.", level: 3, questions: [{q: "Tilki üzümlere ulaşamayınca ne dedi?", options: ["Çok lezzetliymiş", "Zaten korukmuş", "Yarın gelirim", "Boyum yetmedi"], answer: 1}] },
+          { id: 4, title: "Tavşan ile Kaplumbağa", content: "Tavşan, hızıyla övünmeyi çok severdi. Kaplumbağa ise yavaşlığıyla bilinirdi. Bir gün yarışmaya karar verdiler. Yarış başladı, tavşan ok gibi fırladı. Yarı yola gelince 'Nasılsa kaplumbağa çok geride, şurada biraz uyuyayım' dedi. Kaplumbağa ise hiç durmadan, yavaş ama kararlı adımlarla yürüdü. Tavşan uyandığında bir de baktı ki kaplumbağa bitiş çizgisine varmış. Yarışı kazanan, azimle devam eden kaplumbağa oldu.", level: 4, questions: [{q: "Yarışı kim kazandı?", options: ["Tavşan", "Kaplumbağa", "Tilki", "Hakem"], answer: 1}] },
+          { id: 5, title: "Ağustos Böceği ile Karınca", content: "Yaz boyunca Ağustos böceği saz çaldı, şarkı söyledi ve eğlendi. Karınca ise hiç durmadan çalıştı, kış için yuvasına yiyecek taşıdı. Ağustos böceği karıncaya gülüp, 'Bu güzel havanın tadını çıkarsana' dedi. Karınca, 'Kış gelince aç kalmamak için çalışmalıyım' diye cevap verdi. Günler geçti, havalar soğudu ve kış geldi. Her yer karla kaplandı. Ağustos böceği yiyecek bulamadı ve aç kaldı. Titreyerek karıncanın kapısını çaldı. Karınca ise sıcacık yuvasında rahattı. Ağustos böceği hatasını anladı ama iş işten geçmişti.", level: 5, questions: [{q: "Karınca ne yaptı?", options: ["Yattı", "Çalıştı", "Gezdi", "Uyudu"], answer: 1}] },
+          { id: 6, title: "Rüzgar ile Güneş", content: "Bir gün rüzgar ile güneş, hangisinin daha güçlü olduğu konusunda tartışmaya başladılar. O sırada yolda kalın bir palto giymiş bir adam yürüyordu. Rüzgar, 'Ben o adamın paltosunu çıkarırım' dedi ve tüm gücüyle esmeye başladı. Fırtına gibi esti ama o estikçe adam paltosuna daha sıkı sarıldı. Rüzgar yoruldu ve pes etti. Sıra güneşe geldi. Güneş bulutların arkasından çıktı ve nazikçe parlamaya başladı. Hava ısındıkça adam terledi. Önce düğmelerini açtı, sonra sıcak dayanılamaz hale gelince paltosunu çıkarıp koluna aldı. Güneş, nezaketin kaba kuvvetten daha etkili olduğunu kanıtladı.", level: 6, questions: [{q: "Yarışmayı kim kazandı?", options: ["Rüzgar", "Adam", "Güneş", "Bulut"], answer: 2}] },
+          { id: 7, title: "Altın Yumurtlayan Tavuk", content: "Bir zamanlar fakir bir köylünün bir tavuğu vardı. Bu tavuk, diğerlerinden farklıydı çünkü her gün bir tane altın yumurta yumurtluyordu. Köylü bu yumurtaları satarak kısa sürede zengin oldu. Ancak köylü çok açgözlüydü. Her gün sadece bir yumurta almak ona yetmiyordu. 'Tavuğun içinde hazine olmalı, hepsini birden almalıyım' diye düşündü. Bir gün dayanamayıp tavuğu kesti. Fakat tavuğun içi diğer tavuklardan farksızdı. Ne hazine vardı ne de altın. Açgözlü köylü, elindeki değerli tavuğu da kaybetmiş oldu ve eski fakir günlerine geri döndü.", level: 7, questions: [{q: "Köylü tavuğu neden kesti?", options: ["Yemek için", "Hasta olduğu için", "Altınları almak için", "Yaşlandığı için"], answer: 2}] },
+          { id: 8, title: "Yalancı Çoban", content: "Köyün birinde koyunları otlatan bir çoban varmış. Canı sıkılan çoban, köylülere şaka yapmak istemiş. Köye doğru koşarak 'Kurt var! Kurt saldırıyor!' diye bağırmış. Köylüler işlerini bırakıp yardıma koşmuşlar ama ortada kurt falan yokmuş. Çoban gülerek 'Şaka yaptım' demiş. Köylüler kızmış ama geri dönmüşler. Birkaç gün sonra çoban aynı şakayı tekrar yapmış. Köylüler yine yardıma gelmiş, yine kandırıldıklarını anlamışlar. Günlerden bir gün, gerçekten sürüye bir kurt saldırmış. Çoban korkuyla 'Kurt var! Yardım edin!' diye bağırmış. Ancak köylüler, çobanın yine yalan söylediğini düşünerek yardıma gitmemişler. Kurt, sürüdeki koyunları kapmış. Çoban, yalancılığının bedelini ağır ödemiş.", level: 8, questions: [{q: "Köylüler son seferde neden yardıma gelmedi?", options: ["Duymadılar", "İnanmadılar", "Korktular", "Meşguldüler"], answer: 1}] },
+          { id: 9, title: "Şehir Faresi ile Tarla Faresi", content: "Bir gün şehir faresi, uzaktan akrabası olan tarla faresini ziyarete gitmiş. Tarla faresi misafirine buğday, kökler ve mısır ikram etmiş. Şehir faresi, 'Sen burada çok fakir yaşıyorsun, gel benimle şehre gidelim, orada krallar gibi yaşarız' demiş. Birlikte şehre, büyük bir konağa gitmişler. Sofrada peynirler, pastalar, etler varmış. Tam yemeye başlayacaklarken kapı açılmış, içeri insanlar girmiş. Fareler korkuyla deliğe kaçmış. Saklandıkları yerde titrerken evin kedisi gelmiş, onları kovalamış. Tarla faresi korkudan nefes nefese kalmış. 'Benim evimde yiyecekler az ama huzurum var' demiş. 'Senin sofraların zengin ama korku içinde yaşıyorsun. Ben fakir ama özgür hayatımı tercih ederim.' diyerek tarlasına geri dönmüş.", level: 9, questions: [{q: "Tarla faresi neden geri döndü?", options: ["Yemeği beğenmedi", "Korku içinde yaşamak istemedi", "Yolu unuttu", "Köyünü özledi"], answer: 1}] },
+          { id: 10, title: "Keloğlan ve Sihirli Kuş", content: "Bir varmış, bir yokmuş. Evvel zaman içinde, kalbur saman içinde, uzak diyarların birinde Keloğlan ile yaşlı annesi yaşarmış. Fakirlik bellerini bükmüş, yiyecek bir lokma ekmekleri kalmamış. Keloğlan bir gün ormana odun toplamaya gitmiş. Ormanın derinliklerinde, tüyleri gökkuşağı gibi parlayan, kanatları altından daha parlak, eşi benzeri görülmemiş bir kuş görmüş. Kuşun ayağı bir çalıya takılmış, çırpınıp duruyormuş. Keloğlan'ın yüreği el vermemiş, hemen koşup kuşu kurtarmış. Kuş dile gelmiş: 'Ey iyi kalpli Keloğlan! Sen beni kurtardın, ben de sana bir iyilik yapacağım. Al bu tüyümü, ne zaman başın sıkışırsa bu tüyü yak, ben hemen gelirim.' demiş ve uçup gitmiş.", level: 10, questions: [{q: "Kuş, Keloğlan'a ne verdi?", options: ["Bir altın", "Bir tüy", "Bir elma", "Bir harita"], answer: 1}] }
         ];
 
         const EXERCISE_TYPES = [
@@ -382,7 +273,7 @@
             const [texts, setTexts] = useState([]); 
             const [isLoading, setIsLoading] = useState(false);
             
-            // Havuzlar ve Ayarlar
+            // Ayarlar
             const [wordPool, setWordPool] = useState(DEFAULT_WORD_POOL);
             const [sentencePool, setSentencePool] = useState(DEFAULT_SENTENCE_POOL);
             const [exerciseSettings, setExerciseSettings] = useState({});
@@ -1054,7 +945,7 @@
           if (step === 'read') return (
               <div className="bg-white p-8 rounded-xl shadow-sm max-w-4xl mx-auto animate-in">
                 <div className="mb-4 flex justify-between items-center border-b pb-4"><div className="flex flex-col"><span className="font-bold text-gray-700">{selectedText.title}</span><span className="text-xs text-gray-500">Okuma Modu</span></div><button onClick={finishReading} className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-bold animate-pulse">BİTİRDİM</button></div>
-                <div className="prose max-w-none text-2xl leading-loose text-gray-800 font-serif">{selectedText.content}</div>
+                <div className="prose max-w-none text-lg leading-relaxed text-gray-800 font-serif">{selectedText.content}</div>
               </div>
           );
 
@@ -1401,6 +1292,115 @@
               }
           };
 
+          const renderGameArea = () => {
+              if (exercise.type === 'tachistoscope_text') {
+                  if (tachiPhase === 'setup') {
+                      return (
+                          <div className="flex flex-col items-center justify-center h-full max-w-lg mx-auto animate-in">
+                              <h3 className="text-2xl font-bold mb-6 text-indigo-800">Takistoskop Ayarları</h3>
+                              <div className="w-full space-y-6">
+                                  <div>
+                                      <label className="block text-sm font-bold text-gray-700 mb-2">Okunacak Metni Seçin</label>
+                                      <select 
+                                          value={tachiSettings.textId}
+                                          onChange={(e) => setTachiSettings({...tachiSettings, textId: e.target.value})}
+                                          className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                      >
+                                          {allTexts.map(t => (
+                                              <option key={t.id} value={t.id}>{t.title} (Seviye {t.level})</option>
+                                          ))}
+                                      </select>
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                                          Hız (Kelime/Dakika): <span className="text-indigo-600">{tachiSettings.wpm}</span>
+                                      </label>
+                                      <input 
+                                          type="range" min="10" max="800" step="10"
+                                          value={tachiSettings.wpm}
+                                          onChange={(e) => setTachiSettings({...tachiSettings, wpm: parseInt(e.target.value)})}
+                                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                      />
+                                      <p className="text-xs text-gray-500 mt-1">Daha yüksek değer = Daha hızlı geçiş</p>
+                                  </div>
+                                  <button onClick={startTachistoscope} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg hover:bg-indigo-700 shadow-lg transition-transform active:scale-95">
+                                      BAŞLAT
+                                  </button>
+                              </div>
+                          </div>
+                      );
+                  }
+                  if (gameData) {
+                      return (
+                          <div className="flex flex-col items-center justify-center h-full text-center">
+                              <div className="mb-12 text-gray-400 font-semibold uppercase tracking-wider text-sm">{gameData.title}</div>
+                              <div className="text-6xl font-black text-gray-800 h-40 flex items-center justify-center animate-in fade-in duration-75">
+                                  {gameData.words[tachiWordIndex]}
+                              </div>
+                              {!tachiIsPlaying && (
+                                  <div className="mt-8 text-green-600 font-bold text-2xl flex items-center gap-2">
+                                      <CheckCircle /> Metin Tamamlandı!
+                                  </div>
+                              )}
+                          </div>
+                      );
+                  }
+                  return null;
+              }
+
+              if (!gameData) return <div className="p-10 text-center">Egzersiz yükleniyor...</div>;
+
+              if (exercise.type === 'eye_track_count') {
+                  if (eyeTrackPhase === 'start') {
+                      return (
+                          <div className="flex flex-col items-center justify-center h-full text-center animate-in">
+                              <div className="mb-4 flex flex-col items-center">
+                                  <span className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Seviye {eyeTrackLevel}</span>
+                                  <span className="text-xs text-gray-300">Hız: {eyeTrackSpeed}ms</span>
+                              </div>
+                              <h3 className="text-2xl font-bold mb-4">Bu Emojiyi Say:</h3>
+                              <div className="text-8xl mb-8 animate-bounce">{eyeTrackEmoji}</div>
+                              <button onClick={() => setEyeTrackPhase('anim')} className="px-8 py-3 bg-indigo-600 text-white rounded-xl text-xl font-bold hover:bg-indigo-700">BAŞLA</button>
+                          </div>
+                      );
+                  } else if (eyeTrackPhase === 'anim') {
+                      return (
+                          <div className="relative w-full h-96 bg-gray-50 border rounded-xl overflow-hidden">
+                              {eyeTrackCurrentEmoji && (
+                                  <div style={{ left: `${eyeTrackPos.x}%`, top: `${eyeTrackPos.y}%`, position: 'absolute' }} className="text-5xl transition-all duration-300 transform">
+                                      {eyeTrackCurrentEmoji}
+                                  </div>
+                              )}
+                          </div>
+                      );
+                  } else if (eyeTrackPhase === 'input' || eyeTrackPhase === 'result') {
+                      return (
+                          <div className="flex flex-col items-center justify-center h-full text-center relative animate-in">
+                              {feedback && (
+                                  <div className={`absolute inset-0 z-20 rounded-xl flex flex-col items-center justify-center p-6 text-center bg-white/95`}>
+                                      {feedback === 'correct' ? (
+                                          <><ThumbsUp size={64} className="text-green-600 mb-4" /><h3 className="text-3xl font-bold text-green-800">Doğru!</h3><p className="text-green-700 mt-2">Tam {eyeTrackCount} taneydi.</p><p className="text-sm text-green-600 mt-1">Seviye Artıyor!</p></>) : (
+                                          <><ThumbsDown size={64} className="text-red-600 mb-4" /><h3 className="text-3xl font-bold text-red-800">Yanlış!</h3><p className="text-xl mt-2">Doğru cevap: <strong>{correctAnswer}</strong></p></>)}
+                                  </div>
+                              )}
+                              <h3 className="text-2xl font-bold mb-4">Kaç tane {eyeTrackEmoji} gördün?</h3>
+                              <div className="flex gap-2">
+                                  <input type="number" value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="w-32 p-4 border-2 border-indigo-200 rounded-xl text-3xl text-center outline-none focus:border-indigo-600" autoFocus disabled={eyeTrackPhase === 'result'} />
+                                  <button onClick={checkEyeTrackInput} disabled={eyeTrackPhase === 'result'} className="px-6 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50">KONTROL</button>
+                              </div>
+                          </div>
+                      );
+                  }
+              }
+              if (exercise.type === 'grid') return (<div className="animate-in"><p className="text-center mb-4 text-xl">Bul: <strong className="text-indigo-600 text-2xl">{gameData.target}</strong></p><div className="grid grid-cols-4 gap-3">{gameData.grid.map((item, idx) => (<button key={idx} onClick={() => handleGridClick(item)} className="p-4 bg-gray-100 hover:bg-indigo-100 rounded text-lg font-medium transition active:scale-95 shadow-sm border border-gray-200">{item}</button>))}</div></div>);
+              if (exercise.type === 'grid_diff') return (<div className="h-full flex flex-col animate-in"><p className="text-center mb-4 text-lg text-gray-600">Çifti <strong>farklı olan</strong> 2 kutuyu bul!</p><div className="grid grid-cols-4 gap-3 flex-1">{gameData.grid.map((item, idx) => (<button key={item.id} onClick={() => handleGridDiffClick(idx)} className={`p-1 flex flex-col items-center justify-center rounded-lg border-2 transition-all duration-200 ${item.found ? 'bg-green-100 border-green-500 scale-95 opacity-50' : 'bg-white border-gray-200 hover:border-indigo-300 hover:shadow-md'}`}><span className="font-bold text-gray-800 text-sm">{item.w1}</span><span className="text-gray-300 text-[10px] my-0.5">-</span><span className="font-bold text-gray-800 text-sm">{item.w2}</span></button>))}</div></div>);
+              if (exercise.type === 'search_letter') return (<div className="h-full flex flex-col animate-in"><div className="flex justify-center items-center gap-4 mb-4 bg-yellow-50 p-2 rounded-lg"><span className="text-gray-600">Hedefler:</span>{gameData.targets.map((t, i) => (<span key={i} className="text-3xl font-black text-indigo-700">{t}</span>))}</div><div className="grid grid-cols-8 gap-2 flex-1">{gameData.grid.map((item, idx) => (<button key={item.id} onClick={() => handleLetterClick(idx)} className={`text-xl font-bold rounded-md transition-all duration-150 border ${item.found ? 'bg-green-500 text-white border-green-600' : 'bg-white text-gray-700 hover:bg-indigo-50 border-gray-200'}`}>{item.char}</button>))}</div><div className="text-center text-sm text-gray-400 mt-2">Toplam 10 tane var. Bulunan: {gameData.foundCount}</div></div>);
+              if (['flash_memory', 'scramble_word', 'flash_sentence'].includes(exercise.type)) { let displayContent = ""; let instruction = ""; if (exercise.type === 'flash_memory') { displayContent = showContent ? gameData.word : "???"; instruction = "Görünüp kaybolan kelimeyi yazın."; } else if (exercise.type === 'scramble_word') { displayContent = gameData.scrambled; instruction = "Karışık verilen kelimeyi düzeltin."; } else if (exercise.type === 'flash_sentence') { displayContent = showContent ? gameData.sentence : "???"; instruction = "Cümleyi hatırladığınız kadarıyla yazın."; } return (<div className="flex flex-col items-center justify-center h-full space-y-8 relative animate-in">{feedback && (<div className={`absolute inset-0 z-10 rounded-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-300 ${feedback === 'correct' ? 'bg-green-100/90' : 'bg-red-100/90'}`}>{feedback === 'correct' ? (<><ThumbsUp size={64} className="text-green-600 mb-4" /><h3 className="text-3xl font-bold text-green-800">Harika!</h3><p className="text-green-700 mt-2">Doğru bildin.</p></>) : (<><ThumbsDown size={64} className="text-red-600 mb-4" /><h3 className="text-3xl font-bold text-red-800">Yanlış!</h3><div className="mt-4 bg-white p-4 rounded-lg shadow-sm border border-red-200"><p className="text-sm text-gray-500 mb-1">Doğrusu:</p><p className="text-xl font-bold text-gray-800">{correctAnswer}</p></div></>)}</div>)}<div className="text-center w-full"><p className="text-gray-500 mb-4">{instruction}</p><div className={`text-3xl md:text-4xl font-bold text-indigo-800 h-32 flex items-center justify-center px-6 bg-indigo-50 rounded-xl w-full text-center shadow-inner ${exercise.type === 'flash_sentence' ? 'text-2xl' : ''}`}>{displayContent}</div></div>{(!showContent || exercise.type === 'scramble_word') && (<div className="w-full max-w-lg flex gap-2"><input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkTextInput()} className="flex-1 p-4 border-2 border-indigo-200 rounded-xl text-lg outline-none focus:border-indigo-600 transition" placeholder="Cevabınızı buraya yazın..." autoFocus disabled={!!feedback} /><button onClick={checkTextInput} disabled={!!feedback} className="px-6 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50">KONTROL</button></div>)}</div>); }
+              if (exercise.type === 'math_logic') return (<div className="h-full flex flex-col animate-in"><div className="text-center mb-4"><span className="text-xl">Bul: </span><span className={`text-2xl font-black px-4 py-1 rounded ${gameData.targetType === 'Çift' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{gameData.targetType.toUpperCase()} SAYILAR</span></div><div className="grid grid-cols-4 gap-3 flex-1">{gameData.numbers.map((num, idx) => (<button key={num.id} onClick={() => handleMathGridClick(idx)} className={`text-xl font-mono font-bold rounded-lg transition-all duration-200 shadow-sm border ${num.found ? 'bg-green-500 text-white scale-0' : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200'}`}>{num.val}</button>))}</div></div>);
+              if (exercise.type === 'search_num') return (<div className="h-full flex flex-col animate-in"><div className="bg-indigo-600 text-white p-4 rounded-xl text-center mb-6 shadow-md"><p className="text-sm opacity-80 mb-1">ARANAN HEDEF</p><p className="text-4xl font-mono font-bold tracking-widest">{gameData.target}</p></div><div className="grid grid-cols-6 gap-2 flex-1">{gameData.grid.map((num, idx) => (<button key={idx} onClick={() => handleSearchNumClick(num)} className="bg-white border border-gray-200 hover:bg-indigo-50 hover:border-indigo-300 rounded font-mono text-lg text-gray-600 font-medium transition active:scale-95 flex items-center justify-center">{num}</button>))}</div></div>);
+              return <div className="p-10 text-center">Egzersiz yükleniyor...</div>;
+          };
+
           return (
             <div className="bg-white p-6 rounded-xl shadow-lg border border-indigo-100 max-w-4xl mx-auto min-h-[600px] flex flex-col animate-in">
               <div className="flex justify-between items-center mb-6 border-b pb-4">
@@ -1437,3 +1437,4 @@
     </script>
 </body>
 </html>
+
